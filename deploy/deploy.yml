@@ -1,0 +1,82 @@
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: telegraf-injector
+  namespace: telegraf-injector
+  labels:
+    app: telegraf-injector
+webhooks:
+  - name: telegraf.influxdata.com
+    namespaceSelector:
+      matchLabels:
+        controller: telegraf-injector
+    clientConfig:
+      service:
+        name: telegraf-injector
+        namespace: telegraf-injector
+        path: "/mutate-v1-pod"
+      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZ1akNDQTZJQ0NRRFZMVDVWaTJna0JqQU5CZ2txaGtpRzl3MEJBUXNGQURDQm5qRUxNQWtHQTFVRUJoTUMKVGt3eEZUQVRCZ05WQkFnTURGcDFhV1FnU0c5c2JHRnVaREVTTUJBR0ExVUVCd3dKVW05MGRHVnlaR0Z0TVJvdwpHQVlEVlFRS0RCRlRjR0Z5YTJ4cGJtY2dUbVYwZDI5eWF6RVdNQlFHQTFVRUN3d05TVlFnUkdWd1lYSjBiV1Z1CmRERXdNQzRHQTFVRUF3d25kR1ZzWldkeVlXWXRhVzVxWldOMGIzSXVkR1ZzWldkeVlXWXRhVzVxWldOMGIzSXUKYzNaak1CNFhEVEU1TVRFeU9ERTBNemN3TVZvWERUSXlNRGt4TnpFME16Y3dNVm93Z1o0eEN6QUpCZ05WQkFZVApBazVNTVJVd0V3WURWUVFJREF4YWRXbGtJRWh2Ykd4aGJtUXhFakFRQmdOVkJBY01DVkp2ZEhSbGNtUmhiVEVhCk1CZ0dBMVVFQ2d3UlUzQmhjbXRzYVc1bklFNWxkSGR2Y21zeEZqQVVCZ05WQkFzTURVbFVJRVJsY0dGeWRHMWwKYm5ReE1EQXVCZ05WQkFNTUozUmxiR1ZuY21GbUxXbHVhbVZqZEc5eUxuUmxiR1ZuY21GbUxXbHVhbVZqZEc5eQpMbk4yWXpDQ0FpSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnSVBBRENDQWdvQ2dnSUJBTU5PbnpmQUF0QmJvQmtrClpxVkh3Mlp1TGY1QStvc0hNd1d6LzNtM29YRTUzNlZFMlNKcUhoWmt3ZFR5RjRlNlZHeHVTemtiR2NrNWlzd2MKcy91UG5tYTZOd3Q1QTFOUDF2ODEyVktCZmpNcm5WaWpQNVBtSDlwK01ucDk5MS9ORktFTVpJbWZJVXFEUHZiZwpLdno3VTlIRW84NjU2UWtwRGxmNDBybDB5THBvYWpJSEU4SkdIMEU1ZjBsOEplTnpuQkJiODgxWHoxU3FzL1JPCmhZdDdQYVdkNlJ6SGdCakRYVmxYM3BndHJTaWFSTldZQWNnK0VjZTlrQ2w5UlBwUUx1RU9PcVQrOEhiQzN3YVEKMCtoUVc5cy82Wk1UazVEdVFnZGNLLy9hcFZ0bEJkVmVFMit3VkVaSm8wRDNEdnpMYTZJU1hVM2M5dlNCTnY3UQpVTXhwNjR4OC9xM2hPYkJtV2tYUXFqalNrZTNkdS9sRGxkakdYcnhpeGFscmFPOEJ2KytJS3dyaG9oVkRZTWFjCjdaRGhIbnZlNURZM01uTFJGTlk0WG1tZlZVVURRYVlmNmF5cHVrRE53YUlHb1kzdTV3YURLL0grV2VnMHpxVkEKRVFnaDdvaXNzSzhxQmFZMGxMTnVFN3h4b0p6L0hoWUlpS3hvQ1loTEE0OUs4NU1wbnpnTlFPU0h4MnE0bjF4cQpNZldpZXRrZnE1WWt5aFV1VHVZcmlpREpELzFkV1ExbFNTZ1YrLy9xeEpUaGIraGp1UGJFdWJaZEhoQmdscUIrCldVbW5kNnNtN2t0cjRndGlNd3YzN0pPNUovWXgxUUloNzNhb0ZBVy8yR3FnTU12bjVxU001cDNBNG1rUTVPRFoKZ2s3OXNYbUZYZXQrSGZjWWl4bDlnOHp2OVNNNUFnTUJBQUV3RFFZSktvWklodmNOQVFFTEJRQURnZ0lCQUJzMAoxaFF1Vk1TaE02MW1vbCtycEZCMG5OMEQrN0dVZXR6dVh2S3dIV2NYSHNUempnOXBwNlNJeHA1WitxZ29tdXQrCm5lVlhHT3Zkd0pqdW85dXBsMlVrOFVpUW9ZZy9vVDM1MzJBcUwyU0xpT1Avd2ZyNWkzYVBLWGI5R1RDdUlXSGsKbXFYaXlhQmpYMTlZRUdOT2FXRHA3ODRhUStnUlNpd3JEdlY1a1IzY2o4aEo3aWJ4amRGSlBQeUZBL216SjdzagpRMTluYnhxVG5wODVCSEZvS0lQaE9Cak5sbU9GTnNhTTAxWVU1SE55dEhsQ2t0eVdudmRuYXhuS3o2aTRUWlovCjZqZWNUeTZkVktjR3FONlRobXFPOHpuYzd6c3JydjJnQmFGRUVXV3ZMejdOcUdadnFuMURhZmROYkVQZVlsY3cKUzUyTVpDT1Vwc0gzTjRQcC94QSthOXRHa1BvaW1WVkVJNzl3dEE5UXNteUUvVXlpN0l4eHN3cWprUEhxMkNBNgowSHM5YnlzZjA3SEhyYm05QkgvSUFHQmx2RDJQdHVGMVJ2QVMzY25nUlU0Q0YwQXZleGZ4S2pwQkFrTEdQQTA3CnFjbFNoM2JNK2tUdzlDOUwxLzhhWHFFcGZCWEE0RTE2eDVYd1lVa1AwcW9vSzhRMXJjcmpSVjEzMVZxT0lBNkMKTnNmM1VFNEpqOW5lYVB5MDJuajkyS2VTRUgwSUVXQkxYNmQ4bmJ2ZFlhdm9EYVhucEQ3S0FPNHAwWjlKYUZjcQpqRG8rYUNBWDF0c203SkNldXMwQUlEclJiekFBcXpaV2ZtUmZrM3dxSmJ4TEdGbUVYQVlwdnlPWWJXa2lReERBCkprNWN0dFhLUGJPZWpLZWdSazd1c3dnTWtQWFFDcnh1OUxha0VsSHMKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+    rules:
+      - operations: [ "CREATE", "UPDATE", "DELETE"]
+        apiGroups: ["*"]
+        apiVersions: ["*"]
+        resources: ["pods"]
+    failurePolicy: Fail
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telegraf-injector
+  namespace: telegraf-injector
+  labels:
+    app: telegraf-injector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: telegraf-injector
+  template:
+    metadata:
+      labels:
+        app: telegraf-injector
+    spec:
+      serviceAccountName: telegraf-injector
+      containers:
+        - name: controller
+          image: docker.io/gitirabassi/telegraf-injector:v0.0.16
+          args:
+            - --telegraf-default-class=basic
+            - --telegraf-classes-secret=telegraf-injector-classes
+          env: 
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          ports:
+            - name: https
+              containerPort: 9443
+              protocol: TCP
+          volumeMounts:
+          - name: certs
+            readOnly: true
+            mountPath: "/etc/certs"
+      volumes:
+      - name: certs
+        secret:
+          secretName: telegraf-injector-certs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: telegraf-injector
+  namespace: telegraf-injector
+  labels:
+    app: telegraf-injector
+spec:
+  ports:
+    - port: 443
+      targetPort: 9443
+      protocol: TCP
+      name: https
+  selector:
+    app: telegraf-injector

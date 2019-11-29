@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: simple
+  namespace: pippo
+  annotations:
+    telegraf.influxdata.com/port: 8080
+    telegraf.influxdata.com/path: /v1/metrics
+    telegraf.influxdata.com/interval: 5s
+spec:
+  containers:
+  - name: busybox
+    image: busybox
+    args:
+    - sleep
+    - "1000000"
+  - name: telegraf
+    image: docker.io/library/telegraf:1.12
+    resources:
+      limits:
+        cpu: 500m
+        memory: 500Mi
+      requests:
+        cpu: 50m
+        memory: 50Mi
+    - env:
+      - name: NODENAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: spec.nodeName
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-config
+  volumes:
+  - name: telegraf-config
+    secret:
+      secretName: telegraf-config-simple
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: simple
+  namespace: pippo
+stringData:
+  telegraf.conf: |
+    [[inputs.prometheus]]
+      urls = ["http://127.0.0.1:8080/v1/metrics"]

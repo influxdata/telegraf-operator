@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: telegraf-injector-classes
+  namespace: telegraf-injector
+stringData:
+  infra: |+
+    [[outputs.influxdb_v2]]
+      urls = ["zzzzzzz"]
+      token = "zzzzzz"
+      organization = "xxxx"
+      bucket = "infra"
+      timeout = "5s"
+    [global_tags]
+      env = "acc"
+      hostname = "$HOSTNAME"
+      nodename = "$NODENAME"
+    [agent]      interval = "10s"
+      round_interval = true
+      metric_batch_size = 100000
+      metric_buffer_limit = 100000
+      collection_jitter = "0s"
+  app: |+
+    [[outputs.influxdb_v2]]
+      urls = ["xxxxxx"]
+      token = "xxxxxxx"
+      organization = "xxxxxxx"
+      bucket = "app"
+      timeout = "5s"
+      metric_batch_size = 10000
+      metric_buffer_limit = 100000
+    [global_tags]
+      hostname = "$HOSTNAME"
+      nodename = "$NODENAME"
+  basic: |+
+    [[outputs.influxdb]]
+      urls = ["http://influxdb.influxdb:8086"]
+    [global_tags]
+      hostname = "$HOSTNAME"
+      nodename = "$NODENAME"

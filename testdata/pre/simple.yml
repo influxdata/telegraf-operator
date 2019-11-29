@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: simple
+  annotations:
+    telegraf.influxdata.com/port: 8080
+    telegraf.influxdata.com/path: /v1/metrics
+    telegraf.influxdata.com/interval: 5s
+spec:
+  containers:
+  - name: busybox
+    image: busybox
+    args:
+    - sleep
+    - "1000000"
