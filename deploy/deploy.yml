@@ -43,7 +43,7 @@ spec:
       serviceAccountName: telegraf-injector
       containers:
         - name: controller
-          image: docker.io/gitirabassi/telegraf-injector:v0.0.16
+          image: quay.io/influxdb/telegraf-operator:latest
           args:
             - --telegraf-default-class=basic
             - --telegraf-classes-secret=telegraf-injector-classes

@@ -1,6 +1,4 @@
 
-# Image URL to use all building/pushing image targets
-IMG ?= docker.io/gitirabassi/telegraf-injector:v0.0.16
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
@@ -53,14 +51,6 @@ vet:
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
-
-# Build the docker image
-docker-build: test
-	docker build . -t ${IMG}
-
-# Push the docker image
-docker-push:
-	docker push ${IMG}
 
 # find or download controller-gen
 # download controller-gen if necessary
