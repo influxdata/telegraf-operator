@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -11,7 +12,11 @@ import (
 )
 
 const (
+	// TelegrafAnnotationCommon is the shared prefix for all annotations.
 	TelegrafAnnotationCommon = "telegraf.influxdata.com"
+	// TelegrafMetricsPort is used to configure a port telegraf should scrape;
+	// Equivalent to TelegrafMetricsPorts: "6060"
+	TelegrafMetricsPort = "telegraf.influxdata.com/port"
 	// TelegrafMetricsPorts is used to configure which port telegraf should scrape, comma separated list of ports to scrape
 	TelegrafMetricsPorts = "telegraf.influxdata.com/ports"
 	// TelegrafMetricsPath is used to configure at which path to configure scraping to (a port must be configured also), will apply to all ports if multiple are configured
@@ -54,9 +59,10 @@ func addSidecar(pod *corev1.Pod, name, namespace, classData string) (*corev1.Sec
 	return newSecret(pod, name, namespace, telegrafConf)
 }
 
+// Assembling prometheus input
 func assembleConf(pod *corev1.Pod, classData string) (config string, err error) {
-	// Assembling prometheus input
-	if ports, ok := pod.Annotations[TelegrafMetricsPorts]; ok {
+	ports := ports(pod)
+	if len(ports) != 0 {
 		path := "/metrics"
 		if extPath, ok := pod.Annotations[TelegrafMetricsPath]; ok {
 			path = extPath
@@ -70,9 +76,8 @@ func assembleConf(pod *corev1.Pod, classData string) (config string, err error) 
 		if ok {
 			intervalConfig = fmt.Sprintf("interval = \"%s\"", intervalRaw)
 		}
-		portList := strings.Split(fmt.Sprint(ports), ",")
 		urls := []string{}
-		for _, port := range portList {
+		for _, port := range ports {
 			urls = append(urls, fmt.Sprintf("%s://127.0.0.1:%s%s", scheme, port, path))
 		}
 		if len(urls) != 0 {
@@ -154,4 +159,27 @@ func newContainer() corev1.Container {
 			},
 		},
 	}
+}
+
+// ports gathers and merges unique ports from both TelegrafMetricsPort and TelegrafMetricsPorts.
+func ports(pod *corev1.Pod) []string {
+	uniquePorts := map[string]struct{}{}
+	if p, ok := pod.Annotations[TelegrafMetricsPort]; ok {
+		uniquePorts[p] = struct{}{}
+	}
+	if ports, ok := pod.Annotations[TelegrafMetricsPorts]; ok {
+		for _, p := range strings.Split(ports, ",") {
+			uniquePorts[p] = struct{}{}
+		}
+	}
+	if len(uniquePorts) == 0 {
+		return nil
+	}
+
+	ps := make([]string, 0, len(uniquePorts))
+	for p := range uniquePorts {
+		ps = append(ps, p)
+	}
+	 sort.Strings(ps)
+	 return ps
 }

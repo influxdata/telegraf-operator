@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -48,13 +49,29 @@ func Test_assembleConf(t *testing.T) {
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						TelegrafMetricsPorts: "6060",
+						TelegrafMetricsPort: "6060",
 					},
 				},
 			},
 			wantConfig: `
 [[inputs.prometheus]]
   urls = ["http://127.0.0.1:6060/metrics"]
+  
+
+`,
+		},
+		{
+			name: "default prometheus settings with multiple ports",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafMetricsPorts: "6060,9999",
+					},
+				},
+			},
+			wantConfig: `
+[[inputs.prometheus]]
+  urls = ["http://127.0.0.1:6060/metrics", "http://127.0.0.1:9999/metrics"]
   
 
 `,
@@ -179,6 +196,64 @@ status: {}
 `
 	if got != want {
 		t.Errorf("unexpected pod got:\n%v\nwant:\n%v", got, want)
+	}
+}
+
+func Test_ports(t *testing.T) {
+	tests := []struct {
+		name string
+		pod  *corev1.Pod
+		want []string
+	}{
+		{
+			name: "ports merges ports for both annotations",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafMetricsPort:  "6060",
+						TelegrafMetricsPorts: "6060,8080,8888",
+					},
+				},
+			},
+			want: []string{"6060", "8080", "8888"},
+		},
+		{
+			name: "no annotation returns no ports",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+		},
+		{
+			name: "ports are unique and returned in order",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafMetricsPorts: "9999,6060,6060",
+					},
+				},
+			},
+			want: []string{"6060", "9999"},
+		},
+		{
+			name: "single port from TelegrafMetricsPorts",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafMetricsPorts: "6060",
+					},
+				},
+			},
+			want: []string{"6060"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ports(tt.pod); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ports() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
