@@ -25,6 +25,7 @@ kubectl apply -f https://github.com/influxdata/telegraf-operator/blob/master/dep
 # Usage
 
 The available annotions are:
+- `telegraf.influxdata.com/port`: is used to configure which port telegraf should scrape
 - `telegraf.influxdata.com/ports` : is used to configure which port telegraf should scrape, comma separated list of ports to scrape
 - `telegraf.influxdata.com/path` : is used to configure at which path to configure scraping to (a port must be configured also), will apply to all ports if multiple are configured
 - `telegraf.influxdata.com/scheme` : is used to configure at the scheme for the metrics to scrape, will apply to all ports if multiple are configured ( only `http` or `https` are allowed as values)
