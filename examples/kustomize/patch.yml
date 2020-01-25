@@ -1,0 +1,12 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  template:
+    metadata:
+      annotations:
+        telegraf.influxdata.com/input: 
+          [[inputs.mysql]]
+            servers = ["root:$(PASSWORD)$tcp(127.0.0.1:3306)/"]
+        telegraf.influxdata.com/secret-env: "mysql-pass"

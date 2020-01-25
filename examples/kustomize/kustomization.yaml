@@ -1,0 +1,7 @@
+resources:
+- secret.yaml
+- service.yaml
+- deployment.yaml
+
+patches:
+- patch.yml

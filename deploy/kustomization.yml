@@ -1,7 +1,0 @@
-resources:
-- rbac.yml
-- influxdb.yml
-- classes.yml
-- deploy.yml
-- apps.yml
-- pods.yml
