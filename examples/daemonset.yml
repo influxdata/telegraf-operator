@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nginx-deamon
+  namespace: test
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+      annotations:
+        telegraf.influxdata.com/ports: "8080,9090"
+        telegraf.influxdata.com/path: /v1/metrics
+        telegraf.influxdata.com/interval: 5s
+        telegraf.influxdata.com/scheme: http
+        telegraf.influxdata.com/internal: "true"
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine

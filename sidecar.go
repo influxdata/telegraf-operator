@@ -31,9 +31,8 @@ const (
 	TelegrafEnableInternal = "telegraf.influxdata.com/internal"
 	// TelegrafClass configures which kind of class to use (classes are configured on the operator)
 	TelegrafClass = "telegraf.influxdata.com/class"
-	// TelegrafSecretRef = "telegraf.influxdata.com/secret-name"
-	// TelegrafSecretKey = "telegraf.influxdata.com/secret-key"
-
+	// TelegrafSecretEnv allows adding secrets to the telegraf sidecar in the form of environment variables
+	TelegrafSecretEnv = "telegraf.influxdata.com/secret-env"
 	// defaultTelegrafImage is the default telegraf image
 	defaultTelegrafImage = "docker.io/library/telegraf:1.12"
 	telegrafSecretPrefix = "telegraf-config"
@@ -50,7 +49,7 @@ func skip(pod *corev1.Pod) bool {
 }
 
 func addSidecar(pod *corev1.Pod, name, namespace, classData string) (*corev1.Secret, error) {
-	pod.Spec.Containers = append(pod.Spec.Containers, newContainer())
+	pod.Spec.Containers = append(pod.Spec.Containers, newContainer(pod))
 	pod.Spec.Volumes = append(pod.Spec.Volumes, newVolume(name))
 	telegrafConf, err := assembleConf(pod, classData)
 	if err != nil {
@@ -128,8 +127,8 @@ func newVolume(name string) corev1.Volume {
 	}
 }
 
-func newContainer() corev1.Container {
-	return corev1.Container{
+func newContainer(pod *corev1.Pod) corev1.Container {
+	baseContainer := corev1.Container{
 		Name:  "telegraf",
 		Image: defaultTelegrafImage,
 		Resources: corev1.ResourceRequirements{
@@ -152,6 +151,7 @@ func newContainer() corev1.Container {
 				},
 			},
 		},
+
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "telegraf-config",
@@ -159,6 +159,19 @@ func newContainer() corev1.Container {
 			},
 		},
 	}
+	if secretEnv, ok := pod.Annotations[TelegrafSecretEnv]; ok {
+		baseContainer.EnvFrom = []corev1.EnvFromSource{
+			{
+				SecretRef: &corev1.SecretEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: secretEnv,
+					},
+					Optional: func(x bool) *bool { return &x }(true),
+				},
+			},
+		}
+	}
+	return baseContainer
 }
 
 // ports gathers and merges unique ports from both TelegrafMetricsPort and TelegrafMetricsPorts.
@@ -180,6 +193,6 @@ func ports(pod *corev1.Pod) []string {
 	for p := range uniquePorts {
 		ps = append(ps, p)
 	}
-	 sort.Strings(ps)
-	 return ps
+	sort.Strings(ps)
+	return ps
 }
