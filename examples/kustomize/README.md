@@ -2,7 +2,7 @@
 
 This examples shows how to use the telegraf-operator to add monitoring to resources managed by Kustomize
 
-We're taking a look at an exaple about deploying mysql
+We're taking a look at an example about deploying mysql
 
 ## Usage
 
