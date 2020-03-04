@@ -6,7 +6,7 @@
 # The motto
 Easy things should be easy. Adding monitoring to your application has never been as easy as now. 
 
-Does your application exposes prometheus metrics? then adding `telegraf.influxdata.com/port: 8080` is the only thing you need to add telegraf scraping to it
+Does your application exposes prometheus metrics? then adding `telegraf.influxdata.com/port: 8080` annotation to the pod is the only thing you need to add telegraf scraping to it
 
 # Why telegraf-operator?
 
