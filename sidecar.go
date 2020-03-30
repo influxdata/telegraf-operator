@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/influxdata/toml"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,17 +49,13 @@ func skip(pod *corev1.Pod) bool {
 	return true
 }
 
-func addSidecar(pod *corev1.Pod, name, namespace, classData string) (*corev1.Secret, error) {
+func addSidecar(pod *corev1.Pod, name, namespace, telegrafConf string) (*corev1.Secret, error) {
 	pod.Spec.Containers = append(pod.Spec.Containers, newContainer(pod))
 	pod.Spec.Volumes = append(pod.Spec.Volumes, newVolume(name))
-	telegrafConf, err := assembleConf(pod, classData)
-	if err != nil {
-		return nil, err
-	}
 	return newSecret(pod, name, namespace, telegrafConf)
 }
 
-// Assembling prometheus input
+// Assembling telegraf configuration
 func assembleConf(pod *corev1.Pod, classData string) (config string, err error) {
 	ports := ports(pod)
 	if len(ports) != 0 {
@@ -96,6 +93,11 @@ func assembleConf(pod *corev1.Pod, classData string) (config string, err error) 
 		config = fmt.Sprintf("%s\n%s", config, inputsRaw)
 	}
 	config = fmt.Sprintf("%s\n%s", config, classData)
+
+	if _, err := toml.Parse([]byte(config)); err != nil {
+		return "", fmt.Errorf("resulting Telegraf is not a valid file: %v", err)
+	}
+
 	return config, err
 }
 
