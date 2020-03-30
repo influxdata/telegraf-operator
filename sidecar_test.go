@@ -210,7 +210,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.12
+    image: docker.io/library/telegraf:1.13
     name: telegraf
     resources:
       limits:
