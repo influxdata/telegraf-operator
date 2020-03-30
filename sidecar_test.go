@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"reflect"
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -118,6 +119,37 @@ func Test_assembleConf(t *testing.T) {
 
 `,
 		},
+		{
+			name: "valid TOML syntax",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafRawInput: `
+[[inputs.exec]]
+  commands = []
+`,
+					},
+				},
+			},
+			wantConfig: `
+[[inputs.exec]]
+  commands = []
+`,
+		},
+		{
+			name: "invalid TOML syntax",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafRawInput: `
+[[inputs.invalid]]
+  "invalid" = invalid
+`,
+					},
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -126,7 +158,7 @@ func Test_assembleConf(t *testing.T) {
 				t.Errorf("assembleConf() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if gotConfig != tt.wantConfig {
+			if strings.TrimSpace(gotConfig) != strings.TrimSpace(tt.wantConfig) {
 				t.Errorf("assembleConf() = %v, want %v", gotConfig, tt.wantConfig)
 			}
 		})
@@ -142,7 +174,11 @@ func Test_addSidecar(t *testing.T) {
 		},
 	}
 
-	secret, err := addSidecar(pod, "myname", "mynamespace", "")
+	telegrafConf, err := assembleConf(pod, "")
+	if err != nil {
+		t.Errorf("unexpected error assembling sidecar configuration: %v", err)
+	}
+	secret, err := addSidecar(pod, "myname", "mynamespace", telegrafConf)
 	if err != nil {
 		t.Errorf("unexpected error adding to sidecar: %v", err)
 	}

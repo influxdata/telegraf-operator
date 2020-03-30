@@ -95,9 +95,15 @@ func (a *podInjector) Handle(ctx context.Context, req admission.Request) admissi
 		return admission.Allowed("telegraf-operator could not create sidecar container")
 	}
 
-	a.Logger.Info("class data found ; adding sidecar container")
-	// if the class was found, add sidecar
-	secret, err := addSidecar(pod, pod.GetName(), req.Namespace, classData)
+	telegrafConf, err := assembleConf(pod, classData)
+	if err != nil {
+		a.Logger.Info(fmt.Sprintf("unable to assemble telegraf configuration: %v", err))
+		return admission.Allowed("telegraf-operator could not create sidecar container")
+	}
+
+	a.Logger.Info("adding sidecar container")
+	// if the telegraf configuration could be created, add sidecar pod
+	secret, err := addSidecar(pod, pod.GetName(), req.Namespace, telegrafConf)
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}

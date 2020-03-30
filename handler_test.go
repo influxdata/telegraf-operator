@@ -17,6 +17,13 @@ import (
 	logrTesting "github.com/go-logr/logr/testing"
 )
 
+const (
+	sampleClassData = `
+[[outputs.file]]
+  files = ["stdout"]
+`
+)
+
 func Test_podInjector_getClassData(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -43,7 +50,7 @@ func Test_podInjector_getClassData(t *testing.T) {
 						Name:      "name",
 						Namespace: "namespace",
 					},
-					Data: map[string][]byte{TelegrafClass: []byte("value")},
+					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
 				},
 			},
 			secretName: "name",
@@ -59,7 +66,7 @@ func Test_podInjector_getClassData(t *testing.T) {
 						Name:      "name",
 						Namespace: "namespace",
 					},
-					Data: map[string][]byte{TelegrafClass: []byte("value")},
+					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
 				},
 			},
 			secretName: "not_name",
@@ -72,7 +79,7 @@ func Test_podInjector_getClassData(t *testing.T) {
 			className: "unknown",
 			objects: []runtime.Object{
 				&corev1.Secret{
-					Data: map[string][]byte{TelegrafClass: []byte("value")},
+					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
 				},
 			},
 			pod:     &corev1.Pod{},
@@ -83,11 +90,11 @@ func Test_podInjector_getClassData(t *testing.T) {
 			className: TelegrafClass,
 			objects: []runtime.Object{
 				&corev1.Secret{
-					Data: map[string][]byte{TelegrafClass: []byte("value")},
+					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
 				},
 			},
 			pod:  &corev1.Pod{},
-			want: "value",
+			want: sampleClassData,
 		},
 		{
 			name:      "returns secret data with name and namespace",
@@ -98,19 +105,19 @@ func Test_podInjector_getClassData(t *testing.T) {
 						Name:      "name",
 						Namespace: "namespace",
 					},
-					Data: map[string][]byte{TelegrafClass: []byte("value")},
+					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
 				},
 			},
 			secretName: "name",
 			namespace:  "namespace",
 			pod:        &corev1.Pod{},
-			want:       "value",
+			want:       sampleClassData,
 		},
 		{
 			name: "returns secret data with annotation override",
 			objects: []runtime.Object{
 				&corev1.Secret{
-					Data: map[string][]byte{"name_override": []byte("value")},
+					Data: map[string][]byte{"name_override": []byte(sampleClassData)},
 				},
 			},
 			pod: &corev1.Pod{
@@ -120,7 +127,7 @@ func Test_podInjector_getClassData(t *testing.T) {
 					},
 				},
 			},
-			want: "value",
+			want: sampleClassData,
 		},
 	}
 	for _, tt := range tests {
@@ -244,6 +251,43 @@ func Test_podInjector_Handle(t *testing.T) {
 			},
 		},
 		{
+			name: "no sidecar added if invalid TOML configuration passed",
+			req: admission.Request{
+				AdmissionRequest: admv1.AdmissionRequest{
+					Object: runtime.RawExtension{
+						Raw: []byte(`{
+								"apiVersion": "v1",
+								"kind": "Pod",
+								"metadata": {
+								  "name": "simple",
+								  "annotations": {
+									"telegraf.influxdata.com/port": "8080",
+									"telegraf.influxdata.com/path": "/v1/metrics",
+									"telegraf.influxdata.com/inputs": "[inputs.invalid]\n\"invalid\"=invalid"
+								  }
+								},
+								"spec": {
+								  "containers": [
+									{
+									  "name": "busybox",
+									  "image": "busybox",
+									  "args": [
+										"sleep",
+										"1000000"
+									  ]
+									}
+								  ]
+								}
+							  }`),
+					},
+				},
+			},
+			want: want{
+				Allowed: true,
+				Code:    http.StatusOK,
+			},
+		},
+		{
 			name: "inject telegraf into container",
 			req: admission.Request{
 				AdmissionRequest: admv1.AdmissionRequest{
@@ -281,7 +325,7 @@ func Test_podInjector_Handle(t *testing.T) {
 			},
 			objects: []runtime.Object{
 				&corev1.Secret{
-					Data: map[string][]byte{TelegrafClass: []byte("value")},
+					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
 				},
 			},
 			want: want{
@@ -337,7 +381,7 @@ func Test_podInjector_Handle(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "telegraf-config-simple",
 					},
-					Data: map[string][]byte{TelegrafClass: []byte("value")},
+					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
 				},
 			},
 			want: want{
@@ -368,7 +412,7 @@ func Test_podInjector_Handle(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "telegraf-config-simple",
 					},
-					Data: map[string][]byte{TelegrafClass: []byte("value")},
+					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
 				},
 			},
 			want: want{
@@ -402,6 +446,10 @@ func Test_podInjector_Handle(t *testing.T) {
 			sort.Slice(resp.Patches, func(i int, j int) bool {
 				return resp.Patches[i].Path < resp.Patches[j].Path
 			})
+
+			if got, want := len(resp.Patches), len(tt.want.Patches); got != want {
+				t.Fatalf("invalid number of patches returned; got %d, want %d", got, want)
+			}
 
 			for i := range tt.want.Patches {
 				b, err := json.Marshal(resp.Patches[i])
