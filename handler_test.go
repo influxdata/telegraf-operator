@@ -13,6 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	testclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	logrTesting "github.com/go-logr/logr/testing"
 )
 
 func Test_podInjector_getClassData(t *testing.T) {
@@ -129,6 +131,7 @@ func Test_podInjector_getClassData(t *testing.T) {
 				TelegrafClassesSecretName: tt.secretName,
 				TelegrafDefaultClass:      tt.className,
 				ControllerNamespace:       tt.namespace,
+				Logger:                    &logrTesting.TestLogger{T: t},
 			}
 			got, err := p.getClassData(tt.pod)
 			if (err != nil) != tt.wantErr {
@@ -204,7 +207,7 @@ func Test_podInjector_Handle(t *testing.T) {
 			},
 		},
 		{
-			name: "error if secrets are not found",
+			name: "no sidecar added if secrets are not found",
 			req: admission.Request{
 				AdmissionRequest: admv1.AdmissionRequest{
 					Object: runtime.RawExtension{
@@ -236,9 +239,12 @@ func Test_podInjector_Handle(t *testing.T) {
 				},
 			},
 			want: want{
-				Allowed: false,
-				Code:    http.StatusBadRequest,
-				Message: `secrets "" not found`,
+				Allowed: true,
+				Patches: []string{
+					`{"op":"add","path":"/metadata/creationTimestamp"}`,
+					`{"op":"add","path":"/spec/containers/0/resources","value":{}}`,
+					`{"op":"add","path":"/status","value":{}}`,
+				},
 			},
 		},
 		{
@@ -387,6 +393,7 @@ func Test_podInjector_Handle(t *testing.T) {
 				client:               client,
 				decoder:              decoder,
 				TelegrafDefaultClass: tt.fields.TelegrafDefaultClass,
+				Logger:               &logrTesting.TestLogger{T: t},
 			}
 
 			resp := p.Handle(context.Background(), tt.req)

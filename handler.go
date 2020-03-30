@@ -20,6 +20,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/go-logr/logr"
 	admv1 "k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apiserver/pkg/storage/names"
@@ -36,6 +37,7 @@ type podInjector struct {
 	client  client.Client
 	decoder *admission.Decoder
 	names.NameGenerator
+	Logger                    logr.Logger
 	TelegrafClassesSecretName string
 	TelegrafDefaultClass      string
 	ControllerNamespace       string
@@ -78,31 +80,37 @@ func (a *podInjector) Handle(ctx context.Context, req admission.Request) admissi
 	if skip(pod) {
 		return admission.Allowed("telegraf-injector has no power over this pod")
 	}
-	classData, err := a.getClassData(pod)
-	if err != nil {
-		return admission.Errored(http.StatusBadRequest, err)
-	}
+
 	name := pod.GetName()
 	if name == "" {
 		name = names.SimpleNameGenerator.GenerateName(pod.GetGenerateName())
 		pod.SetName(name)
 		handlerLog.Info("name: " + name + ",  pod_getname=" + pod.GetName())
 	}
-	secret, err := addSidecar(pod, pod.GetName(), req.Namespace, classData)
-	if err != nil {
-		return admission.Errored(http.StatusBadRequest, err)
-	}
-	if req.Operation == admv1.Create {
-		err = a.client.Create(ctx, secret)
+
+	classData, err := a.getClassData(pod)
+	if err == nil {
+		a.Logger.Info("class data found ; adding sidecar container")
+		// if the class was found, add sidecar
+		secret, err := addSidecar(pod, pod.GetName(), req.Namespace, classData)
 		if err != nil {
 			return admission.Errored(http.StatusBadRequest, err)
 		}
-	}
-	if req.Operation == admv1.Update {
-		err = a.client.Update(ctx, secret)
-		if err != nil {
-			return admission.Errored(http.StatusBadRequest, err)
+
+		if req.Operation == admv1.Create {
+			err = a.client.Create(ctx, secret)
+			if err != nil {
+				return admission.Errored(http.StatusBadRequest, err)
+			}
 		}
+		if req.Operation == admv1.Update {
+			err = a.client.Update(ctx, secret)
+			if err != nil {
+				return admission.Errored(http.StatusBadRequest, err)
+			}
+		}
+	} else {
+		a.Logger.Info(fmt.Sprintf("unable to find class data: %v ; not adding sidecar container", err))
 	}
 
 	marshaledPod, err := json.Marshal(pod)

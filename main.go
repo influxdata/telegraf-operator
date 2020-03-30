@@ -85,6 +85,7 @@ func main() {
 		TelegrafClassesSecretName: telegrafClassesSecretName,
 		TelegrafDefaultClass:      defaultTelegrafClass,
 		ControllerNamespace:       controllerNamespace,
+		Logger:                    setupLog.WithName("podInjector"),
 	}})
 
 	setupLog.Info("starting manager")
