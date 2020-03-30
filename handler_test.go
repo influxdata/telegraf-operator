@@ -379,7 +379,7 @@ func Test_podInjector_Handle(t *testing.T) {
 			},
 			objects: []runtime.Object{
 				&corev1.Secret{
-					Data: map[string][]byte{TelegrafClass: []byte("value")},
+					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
 				},
 			},
 			want: want{
