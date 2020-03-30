@@ -78,6 +78,7 @@ func (a *podInjector) Handle(ctx context.Context, req admission.Request) admissi
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 	if skip(pod) {
+		a.Logger.Info("skipping pod as telegraf-injector should not handle it")
 		return admission.Allowed("telegraf-injector has no power over this pod")
 	}
 
@@ -89,28 +90,29 @@ func (a *podInjector) Handle(ctx context.Context, req admission.Request) admissi
 	}
 
 	classData, err := a.getClassData(pod)
-	if err == nil {
-		a.Logger.Info("class data found ; adding sidecar container")
-		// if the class was found, add sidecar
-		secret, err := addSidecar(pod, pod.GetName(), req.Namespace, classData)
+	if err != nil {
+		a.Logger.Info(fmt.Sprintf("unable to find class data: %v ; not adding sidecar container", err))
+		return admission.Allowed("telegraf-injector could not create sidecar container")
+	}
+
+	a.Logger.Info("class data found ; adding sidecar container")
+	// if the class was found, add sidecar
+	secret, err := addSidecar(pod, pod.GetName(), req.Namespace, classData)
+	if err != nil {
+		return admission.Errored(http.StatusBadRequest, err)
+	}
+
+	if req.Operation == admv1.Create {
+		err = a.client.Create(ctx, secret)
 		if err != nil {
 			return admission.Errored(http.StatusBadRequest, err)
 		}
-
-		if req.Operation == admv1.Create {
-			err = a.client.Create(ctx, secret)
-			if err != nil {
-				return admission.Errored(http.StatusBadRequest, err)
-			}
+	}
+	if req.Operation == admv1.Update {
+		err = a.client.Update(ctx, secret)
+		if err != nil {
+			return admission.Errored(http.StatusBadRequest, err)
 		}
-		if req.Operation == admv1.Update {
-			err = a.client.Update(ctx, secret)
-			if err != nil {
-				return admission.Errored(http.StatusBadRequest, err)
-			}
-		}
-	} else {
-		a.Logger.Info(fmt.Sprintf("unable to find class data: %v ; not adding sidecar container", err))
 	}
 
 	marshaledPod, err := json.Marshal(pod)

@@ -240,11 +240,7 @@ func Test_podInjector_Handle(t *testing.T) {
 			},
 			want: want{
 				Allowed: true,
-				Patches: []string{
-					`{"op":"add","path":"/metadata/creationTimestamp"}`,
-					`{"op":"add","path":"/spec/containers/0/resources","value":{}}`,
-					`{"op":"add","path":"/status","value":{}}`,
-				},
+				Code:    http.StatusOK,
 			},
 		},
 		{
