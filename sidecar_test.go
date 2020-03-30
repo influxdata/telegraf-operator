@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -166,25 +167,22 @@ func Test_assembleConf(t *testing.T) {
 }
 
 func Test_addSidecar(t *testing.T) {
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{
-				TelegrafMetricsPorts: "6060",
+	tests := []struct {
+		name       string
+		pod        *corev1.Pod
+		wantSecret string
+		wantPod    string
+	}{
+		{
+			name: "validate prometheus inputs creation",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafMetricsPorts: "6060",
+					},
+				},
 			},
-		},
-	}
-
-	telegrafConf, err := assembleConf(pod, "")
-	if err != nil {
-		t.Errorf("unexpected error assembling sidecar configuration: %v", err)
-	}
-	secret, err := addSidecar(pod, "myname", "mynamespace", telegrafConf)
-	if err != nil {
-		t.Errorf("unexpected error adding to sidecar: %v", err)
-	}
-
-	got := toYAML(t, secret)
-	want := `apiVersion: v1
+			wantSecret: `apiVersion: v1
 kind: Secret
 metadata:
   creationTimestamp: null
@@ -193,17 +191,17 @@ metadata:
 stringData:
   telegraf.conf: "\n[[inputs.prometheus]]\n  urls = [\"http://127.0.0.1:6060/metrics\"]\n
     \ \n\n"
-type: Opaque
-`
-
-	if got != want {
-		t.Errorf("unexpected secret got:\n%v\nwant:\n%v", got, want)
-	}
-
-	got = toYAML(t, pod)
-	want = `metadata:
-  annotations:
-    telegraf.influxdata.com/ports: "6060"
+type: Opaque`,
+		},
+		{
+			name: "validate default telegraf pod definition",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			wantPod: `
+metadata:
   creationTimestamp: null
 spec:
   containers:
@@ -212,7 +210,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.12
+    image: docker.io/library/telegraf:1.13
     name: telegraf
     resources:
       limits:
@@ -229,9 +227,74 @@ spec:
     secret:
       secretName: telegraf-config-myname
 status: {}
-`
-	if got != want {
-		t.Errorf("unexpected pod got:\n%v\nwant:\n%v", got, want)
+			`,
+		},
+		{
+			name: "validate custom telegraf image pod definition",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafImage: "docker.io/library/telegraf:1.11",
+					},
+				},
+			},
+			wantPod: `
+metadata:
+  annotations:
+    telegraf.influxdata.com/image: docker.io/library/telegraf:1.11
+  creationTimestamp: null
+spec:
+  containers:
+  - env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    image: docker.io/library/telegraf:1.11
+    name: telegraf
+    resources:
+      limits:
+        cpu: 500m
+        memory: 500Mi
+      requests:
+        cpu: 50m
+        memory: 50Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-config
+  volumes:
+  - name: telegraf-config
+    secret:
+      secretName: telegraf-config-myname
+status: {}
+			`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			telegrafConf, err := assembleConf(tt.pod, "")
+			if err != nil {
+				t.Errorf("unexpected error assembling sidecar configuration: %v", err)
+			}
+			secret, err := addSidecar(tt.pod, defaultTelegrafImage, "myname", "mynamespace", telegrafConf)
+			if err != nil {
+				t.Errorf("unexpected error adding to sidecar: %v", err)
+			}
+
+			if tt.wantSecret != "" {
+				if want, got := strings.TrimSpace(tt.wantSecret), strings.TrimSpace(toYAML(t, secret)); got != want {
+					t.Errorf("unexpected secret got:\n%v\nwant:\n%v", got, want)
+				}
+			}
+
+			if tt.wantPod != "" {
+				if want, got := strings.TrimSpace(tt.wantPod), strings.TrimSpace(toYAML(t, tt.pod)); got != want {
+					fmt.Printf("WTF\n%s\n", got)
+					t.Errorf("unexpected pod got:\n%v\nwant:\n%v", got, want)
+				}
+			}
+		})
 	}
 }
 

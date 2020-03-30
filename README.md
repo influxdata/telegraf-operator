@@ -32,6 +32,7 @@ The available annotions are:
 - `telegraf.influxdata.com/interval` : is used to configure interval for telegraf scraping (Go style duration, e.g 5s, 30s, 2m .. )
 - `telegraf.influxdata.com/inputs` : is used to configure custom inputs for telegraf
 - `telegraf.influxdata.com/internal` : is used to enable telegraf "internal" input plugins for
+- `telegraf.influxdata.com/image` : is used to configure telegraf image to be used for the `telegraf` sidecar container
 - `telegraf.influxdata.com/class` : configures which kind of class to use (classes are configured on the operator)
 - `telegraf.influxdata.com/secret-env` : allows adding secrets to the telegraf sidecar in the form of environment variables
 

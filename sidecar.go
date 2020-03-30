@@ -34,8 +34,9 @@ const (
 	TelegrafClass = "telegraf.influxdata.com/class"
 	// TelegrafSecretEnv allows adding secrets to the telegraf sidecar in the form of environment variables
 	TelegrafSecretEnv = "telegraf.influxdata.com/secret-env"
-	// defaultTelegrafImage is the default telegraf image
-	defaultTelegrafImage = "docker.io/library/telegraf:1.12"
+	// TelegrafImage allows specifying a custom telegraf image to be used in the sidecar container
+	TelegrafImage = "telegraf.influxdata.com/image"
+
 	telegrafSecretPrefix = "telegraf-config"
 )
 
@@ -49,8 +50,8 @@ func skip(pod *corev1.Pod) bool {
 	return true
 }
 
-func addSidecar(pod *corev1.Pod, name, namespace, telegrafConf string) (*corev1.Secret, error) {
-	pod.Spec.Containers = append(pod.Spec.Containers, newContainer(pod))
+func addSidecar(pod *corev1.Pod, telegrafImage, name, namespace, telegrafConf string) (*corev1.Secret, error) {
+	pod.Spec.Containers = append(pod.Spec.Containers, newContainer(pod, telegrafImage))
 	pod.Spec.Volumes = append(pod.Spec.Volumes, newVolume(name))
 	return newSecret(pod, name, namespace, telegrafConf)
 }
@@ -129,10 +130,13 @@ func newVolume(name string) corev1.Volume {
 	}
 }
 
-func newContainer(pod *corev1.Pod) corev1.Container {
+func newContainer(pod *corev1.Pod, telegrafImage string) corev1.Container {
+	if customTelegrafImage, ok := pod.Annotations[TelegrafImage]; ok {
+		telegrafImage = customTelegrafImage
+	}
 	baseContainer := corev1.Container{
 		Name:  "telegraf",
-		Image: defaultTelegrafImage,
+		Image: telegrafImage,
 		Resources: corev1.ResourceRequirements{
 			Limits: corev1.ResourceList{
 				"cpu":    resource.MustParse("500m"),
