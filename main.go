@@ -37,6 +37,10 @@ var (
 	setupLog = ctrl.Log.WithName("setup")
 )
 
+const (
+	defaultTelegrafImage = "docker.io/library/telegraf:1.12"
+)
+
 func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
 
@@ -49,12 +53,14 @@ func main() {
 	var telegrafClassesSecretName string
 	var defaultTelegrafClass string
 	var controllerNamespace string
+	var telegrafImage string
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(&telegrafClassesSecretName, "telegraf-classes-secret", "telegraf-classes", "The name of the secret in which are configured the telegraf classes")
 	flag.StringVar(&defaultTelegrafClass, "telegraf-default-class", "default", "Default telegraf class to use")
 	flag.StringVar(&controllerNamespace, "namespace", os.Getenv("POD_NAMESPACE"), "Namespace in whick this pod is running in")
+	flag.StringVar(&telegrafImage, "telegraf-image", defaultTelegrafImage, "Telegraf image to inject")
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(func(o *zap.Options) {
@@ -84,6 +90,7 @@ func main() {
 	hookServer.Register("/mutate-v1-pod", &webhook.Admission{Handler: &podInjector{
 		TelegrafClassesSecretName: telegrafClassesSecretName,
 		TelegrafDefaultClass:      defaultTelegrafClass,
+		TelegrafImage:             telegrafImage,
 		ControllerNamespace:       controllerNamespace,
 		Logger:                    setupLog.WithName("podInjector"),
 	}})
