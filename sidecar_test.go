@@ -296,40 +296,6 @@ status: {}
 			}
 		})
 	}
-
-	// 	got = toYAML(t, pod)
-	// 	want = `metadata:
-	//   annotations:
-	//     telegraf.influxdata.com/ports: "6060"
-	//   creationTimestamp: null
-	// spec:
-	//   containers:
-	//   - env:
-	//     - name: NODENAME
-	//       valueFrom:
-	//         fieldRef:
-	//           fieldPath: spec.nodeName
-	//     image: docker.io/library/telegraf:1.12
-	//     name: telegraf
-	//     resources:
-	//       limits:
-	//         cpu: 500m
-	//         memory: 500Mi
-	//       requests:
-	//         cpu: 50m
-	//         memory: 50Mi
-	//     volumeMounts:
-	//     - mountPath: /etc/telegraf
-	//       name: telegraf-config
-	//   volumes:
-	//   - name: telegraf-config
-	//     secret:
-	//       secretName: telegraf-config-myname
-	// status: {}
-	// `
-	// 	if got != want {
-	// 		t.Errorf("unexpected pod got:\n%v\nwant:\n%v", got, want)
-	// 	}
 }
 
 func Test_ports(t *testing.T) {
