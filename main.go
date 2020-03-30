@@ -38,7 +38,7 @@ var (
 )
 
 const (
-	defaultTelegrafImage = "docker.io/library/telegraf:1.12"
+	defaultTelegrafImage = "docker.io/library/telegraf:1.13"
 )
 
 func init() {
