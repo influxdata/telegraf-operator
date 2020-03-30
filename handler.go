@@ -92,7 +92,7 @@ func (a *podInjector) Handle(ctx context.Context, req admission.Request) admissi
 	classData, err := a.getClassData(pod)
 	if err != nil {
 		a.Logger.Info(fmt.Sprintf("unable to find class data: %v ; not adding sidecar container", err))
-		return admission.Allowed("telegraf-injector could not create sidecar container")
+		return admission.Allowed("telegraf-operator could not create sidecar container")
 	}
 
 	a.Logger.Info("class data found ; adding sidecar container")
