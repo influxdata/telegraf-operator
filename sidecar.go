@@ -40,6 +40,11 @@ const (
 	telegrafSecretPrefix = "telegraf-config"
 )
 
+type sidecarConfig struct {
+	TelegrafImage               string
+	EnableDefaultInternalPlugin bool
+}
+
 // This function check if the pod have the correct annotations, otherwise the controller will skip this pod entirely
 func skip(pod *corev1.Pod) bool {
 	for key := range pod.GetAnnotations() {
@@ -50,14 +55,14 @@ func skip(pod *corev1.Pod) bool {
 	return true
 }
 
-func addSidecar(pod *corev1.Pod, telegrafImage, name, namespace, telegrafConf string) (*corev1.Secret, error) {
-	pod.Spec.Containers = append(pod.Spec.Containers, newContainer(pod, telegrafImage))
+func addSidecar(pod *corev1.Pod, config *sidecarConfig, name, namespace, telegrafConf string) (*corev1.Secret, error) {
+	pod.Spec.Containers = append(pod.Spec.Containers, newContainer(pod, config))
 	pod.Spec.Volumes = append(pod.Spec.Volumes, newVolume(name))
 	return newSecret(pod, name, namespace, telegrafConf)
 }
 
 // Assembling telegraf configuration
-func assembleConf(pod *corev1.Pod, classData string) (config string, err error) {
+func assembleConf(pod *corev1.Pod, config *sidecarConfig, classData string) (telegrafConf string, err error) {
 	ports := ports(pod)
 	if len(ports) != 0 {
 		path := "/metrics"
@@ -78,28 +83,32 @@ func assembleConf(pod *corev1.Pod, classData string) (config string, err error) 
 			urls = append(urls, fmt.Sprintf("%s://127.0.0.1:%s%s", scheme, port, path))
 		}
 		if len(urls) != 0 {
-			config = fmt.Sprintf("%s\n%s", config, fmt.Sprintf("[[inputs.prometheus]]\n  urls = [\"%s\"]\n  %s\n", strings.Join(urls, `", "`), intervalConfig))
+			telegrafConf = fmt.Sprintf("%s\n%s", telegrafConf, fmt.Sprintf("[[inputs.prometheus]]\n  urls = [\"%s\"]\n  %s\n", strings.Join(urls, `", "`), intervalConfig))
 		}
 	}
+	enableInternal := config.EnableDefaultInternalPlugin
 	if internalRaw, ok := pod.Annotations[TelegrafEnableInternal]; ok {
 		internal, err := strconv.ParseBool(internalRaw)
 		if err != nil {
 			internal = false
+		} else {
+			// only override enableInternal if the annotation was successfully parsed as a boolean
+			enableInternal = internal
 		}
-		if internal {
-			config = fmt.Sprintf("%s\n%s", config, fmt.Sprintf("[[inputs.internal]]\n"))
-		}
+	}
+	if enableInternal {
+		telegrafConf = fmt.Sprintf("%s\n%s", telegrafConf, fmt.Sprintf("[[inputs.internal]]\n"))
 	}
 	if inputsRaw, ok := pod.Annotations[TelegrafRawInput]; ok {
-		config = fmt.Sprintf("%s\n%s", config, inputsRaw)
+		telegrafConf = fmt.Sprintf("%s\n%s", telegrafConf, inputsRaw)
 	}
-	config = fmt.Sprintf("%s\n%s", config, classData)
+	telegrafConf = fmt.Sprintf("%s\n%s", telegrafConf, classData)
 
-	if _, err := toml.Parse([]byte(config)); err != nil {
+	if _, err := toml.Parse([]byte(telegrafConf)); err != nil {
 		return "", fmt.Errorf("resulting Telegraf is not a valid file: %v", err)
 	}
 
-	return config, err
+	return telegrafConf, err
 }
 
 func newSecret(pod *corev1.Pod, name, namespace, telegrafConf string) (*corev1.Secret, error) {
@@ -130,9 +139,12 @@ func newVolume(name string) corev1.Volume {
 	}
 }
 
-func newContainer(pod *corev1.Pod, telegrafImage string) corev1.Container {
+func newContainer(pod *corev1.Pod, config *sidecarConfig) corev1.Container {
+	var telegrafImage string
 	if customTelegrafImage, ok := pod.Annotations[TelegrafImage]; ok {
 		telegrafImage = customTelegrafImage
+	} else {
+		telegrafImage = config.TelegrafImage
 	}
 	baseContainer := corev1.Container{
 		Name:  "telegraf",

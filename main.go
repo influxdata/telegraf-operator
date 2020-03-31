@@ -54,9 +54,12 @@ func main() {
 	var defaultTelegrafClass string
 	var controllerNamespace string
 	var telegrafImage string
+	var enableDefaultInternalPlugin bool
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
+	flag.BoolVar(&enableDefaultInternalPlugin, "enable-default-internal-plugin", false,
+		"Enable internal plugin in telegraf for all sidecar. If disabled, can be set explicitly via appropriate annotation")
 	flag.StringVar(&telegrafClassesSecretName, "telegraf-classes-secret", "telegraf-classes", "The name of the secret in which are configured the telegraf classes")
 	flag.StringVar(&defaultTelegrafClass, "telegraf-default-class", "default", "Default telegraf class to use")
 	flag.StringVar(&controllerNamespace, "namespace", os.Getenv("POD_NAMESPACE"), "Namespace in whick this pod is running in")
@@ -90,9 +93,12 @@ func main() {
 	hookServer.Register("/mutate-v1-pod", &webhook.Admission{Handler: &podInjector{
 		TelegrafClassesSecretName: telegrafClassesSecretName,
 		TelegrafDefaultClass:      defaultTelegrafClass,
-		TelegrafImage:             telegrafImage,
 		ControllerNamespace:       controllerNamespace,
 		Logger:                    setupLog.WithName("podInjector"),
+		SidecarConfig: &sidecarConfig{
+			TelegrafImage:               telegrafImage,
+			EnableDefaultInternalPlugin: enableDefaultInternalPlugin,
+		},
 	}})
 
 	setupLog.Info("starting manager")
