@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"testing"
 
@@ -18,141 +21,21 @@ import (
 )
 
 const (
-	sampleClassData = `
-[[outputs.file]]
-  files = ["stdout"]
-`
+	testTelegrafClass = "testclass"
 )
 
-func Test_podInjector_getClassData(t *testing.T) {
-	tests := []struct {
-		name       string
-		objects    []runtime.Object
-		secretName string
-		className  string
-		namespace  string
-		pod        *corev1.Pod
+func createTempClassesDirectory(t *testing.T, classes map[string]string) string {
+	dir, err := ioutil.TempDir("", "tests")
+	if err != nil {
+		t.Fatalf("unable to create temporary directory: %v", err)
+	}
+	for key, val := range classes {
+		if err := ioutil.WriteFile(filepath.Join(dir, key), []byte(val), 0600); err != nil {
+			t.Fatalf("unable to write temporary file: %v", err)
+		}
+	}
 
-		want    string
-		wantErr bool
-	}{
-		{
-			name:    "secret not found",
-			objects: []runtime.Object{},
-			pod:     &corev1.Pod{},
-			wantErr: true,
-		},
-		{
-			name: "secret not found in other namespace",
-			objects: []runtime.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "name",
-						Namespace: "namespace",
-					},
-					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
-				},
-			},
-			secretName: "name",
-			namespace:  "not_namespace",
-			pod:        &corev1.Pod{},
-			wantErr:    true,
-		},
-		{
-			name: "secret not found with different name",
-			objects: []runtime.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "name",
-						Namespace: "namespace",
-					},
-					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
-				},
-			},
-			secretName: "not_name",
-			namespace:  "namespace",
-			pod:        &corev1.Pod{},
-			wantErr:    true,
-		},
-		{
-			name:      "data does not contain class name",
-			className: "unknown",
-			objects: []runtime.Object{
-				&corev1.Secret{
-					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
-				},
-			},
-			pod:     &corev1.Pod{},
-			wantErr: true,
-		},
-		{
-			name:      "returns secret data",
-			className: TelegrafClass,
-			objects: []runtime.Object{
-				&corev1.Secret{
-					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
-				},
-			},
-			pod:  &corev1.Pod{},
-			want: sampleClassData,
-		},
-		{
-			name:      "returns secret data with name and namespace",
-			className: TelegrafClass,
-			objects: []runtime.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "name",
-						Namespace: "namespace",
-					},
-					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
-				},
-			},
-			secretName: "name",
-			namespace:  "namespace",
-			pod:        &corev1.Pod{},
-			want:       sampleClassData,
-		},
-		{
-			name: "returns secret data with annotation override",
-			objects: []runtime.Object{
-				&corev1.Secret{
-					Data: map[string][]byte{"name_override": []byte(sampleClassData)},
-				},
-			},
-			pod: &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						TelegrafClass: "name_override",
-					},
-				},
-			},
-			want: sampleClassData,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := testclient.NewFakeClientWithScheme(scheme, tt.objects...)
-			p := &podInjector{
-				client:                    client,
-				TelegrafClassesSecretName: tt.secretName,
-				TelegrafDefaultClass:      tt.className,
-				ControllerNamespace:       tt.namespace,
-				Logger:                    &logrTesting.TestLogger{T: t},
-				SidecarHandler: &sidecarHandler{
-					TelegrafImage: defaultTelegrafImage,
-				},
-			}
-			got, err := p.getClassData(tt.pod)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("podInjector.getClassData() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("podInjector.getClassData() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	return dir
 }
 
 func Test_podInjector_Handle(t *testing.T) {
@@ -163,13 +46,13 @@ func Test_podInjector_Handle(t *testing.T) {
 		Message string
 	}
 	type fields struct {
-		TelegrafClassesSecretName string
-		TelegrafDefaultClass      string
+		TelegrafDefaultClass string
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		objects []runtime.Object
+		classes map[string]string
 		req     admission.Request
 		want    want
 		handler *sidecarHandler
@@ -325,13 +208,9 @@ func Test_podInjector_Handle(t *testing.T) {
 				},
 			},
 			fields: fields{
-				TelegrafDefaultClass: TelegrafClass,
+				TelegrafDefaultClass: testTelegrafClass,
 			},
-			objects: []runtime.Object{
-				&corev1.Secret{
-					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
-				},
-			},
+			classes: map[string]string{testTelegrafClass: sampleClassData},
 			want: want{
 				Allowed: true,
 				Patches: []string{
@@ -380,13 +259,9 @@ func Test_podInjector_Handle(t *testing.T) {
 				TelegrafImage: "docker.io/library/telegraf:1.11",
 			},
 			fields: fields{
-				TelegrafDefaultClass: TelegrafClass,
+				TelegrafDefaultClass: testTelegrafClass,
 			},
-			objects: []runtime.Object{
-				&corev1.Secret{
-					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
-				},
-			},
+			classes: map[string]string{testTelegrafClass: sampleClassData},
 			want: want{
 				Allowed: true,
 				Patches: []string{
@@ -433,13 +308,9 @@ func Test_podInjector_Handle(t *testing.T) {
 				},
 			},
 			fields: fields{
-				TelegrafDefaultClass: TelegrafClass,
+				TelegrafDefaultClass: testTelegrafClass,
 			},
-			objects: []runtime.Object{
-				&corev1.Secret{
-					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
-				},
-			},
+			classes: map[string]string{testTelegrafClass: sampleClassData},
 			want: want{
 				Allowed: true,
 				Patches: []string{
@@ -485,8 +356,7 @@ func Test_podInjector_Handle(t *testing.T) {
 				},
 			},
 			fields: fields{
-				TelegrafDefaultClass:      TelegrafClass,
-				TelegrafClassesSecretName: "telegraf-config-simple",
+				TelegrafDefaultClass: testTelegrafClass,
 			},
 			objects: []runtime.Object{
 				&corev1.Secret{
@@ -496,6 +366,7 @@ func Test_podInjector_Handle(t *testing.T) {
 					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
 				},
 			},
+			classes: map[string]string{testTelegrafClass: sampleClassData},
 			want: want{
 				Allowed: true,
 				Patches: []string{
@@ -516,17 +387,9 @@ func Test_podInjector_Handle(t *testing.T) {
 				},
 			},
 			fields: fields{
-				TelegrafDefaultClass:      TelegrafClass,
-				TelegrafClassesSecretName: "telegraf-config-simple",
+				TelegrafDefaultClass: testTelegrafClass,
 			},
-			objects: []runtime.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "telegraf-config-simple",
-					},
-					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
-				},
-			},
+			classes: map[string]string{testTelegrafClass: sampleClassData},
 			want: want{
 				Code:    http.StatusOK,
 				Allowed: true,
@@ -549,12 +412,23 @@ func Test_podInjector_Handle(t *testing.T) {
 				tt.handler.TelegrafImage = defaultTelegrafImage
 			}
 
+			dir := createTempClassesDirectory(t, tt.classes)
+			defer os.RemoveAll(dir)
+
+			logger := &logrTesting.TestLogger{T: t}
+
+			testClassDataHandler := &classDataHandler{
+				Logger:                   logger,
+				TelegrafClassesDirectory: dir,
+				TelegrafDefaultClass:     tt.fields.TelegrafDefaultClass,
+			}
+
 			p := &podInjector{
-				client:               client,
-				decoder:              decoder,
-				TelegrafDefaultClass: tt.fields.TelegrafDefaultClass,
-				Logger:               &logrTesting.TestLogger{T: t},
-				SidecarHandler:       tt.handler,
+				client:           client,
+				decoder:          decoder,
+				Logger:           logger,
+				SidecarHandler:   tt.handler,
+				ClassDataHandler: testClassDataHandler,
 			}
 
 			resp := p.Handle(context.Background(), tt.req)

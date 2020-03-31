@@ -18,9 +18,9 @@ metadata:
   labels:
     app: telegraf-operator
 rules:
-- apiGroups: [""]
-  resources: ["secrets"]
-  verbs: ["*"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["*"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
@@ -33,9 +33,9 @@ roleRef:
   kind: ClusterRole
   name: telegraf-operator
 subjects:
-- kind: ServiceAccount
-  name: telegraf-operator
-  namespace: telegraf-operator
+  - kind: ServiceAccount
+    name: telegraf-operator
+    namespace: telegraf-operator
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
@@ -57,7 +57,7 @@ webhooks:
         path: "/mutate-v1-pod"
       caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUdIekNDQkFlZ0F3SUJBZ0lVQnBCMDJoYzAraFZwdlp4bnFLbmcyMk9OaENNd0RRWUpLb1pJaHZjTkFRRUwKQlFBd2daNHhDekFKQmdOVkJBWVRBazVNTVJVd0V3WURWUVFJREF4YWRXbGtJRWh2Ykd4aGJtUXhFakFRQmdOVgpCQWNNQ1ZKdmRIUmxjbVJoYlRFYU1CZ0dBMVVFQ2d3UlUzQmhjbXRzYVc1bklFNWxkSGR2Y21zeEZqQVVCZ05WCkJBc01EVWxVSUVSbGNHRnlkRzFsYm5ReE1EQXVCZ05WQkFNTUozUmxiR1ZuY21GbUxXOXdaWEpoZEc5eUxuUmwKYkdWbmNtRm1MVzl3WlhKaGRHOXlMbk4yWXpBZUZ3MHlNREF6TWpjeE5URXpOVEJhRncwek1EQXpNalV4TlRFegpOVEJhTUlHZU1Rc3dDUVlEVlFRR0V3Sk9UREVWTUJNR0ExVUVDQXdNV25WcFpDQkliMnhzWVc1a01SSXdFQVlEClZRUUhEQWxTYjNSMFpYSmtZVzB4R2pBWUJnTlZCQW9NRVZOd1lYSnJiR2x1WnlCT1pYUjNiM0pyTVJZd0ZBWUQKVlFRTERBMUpWQ0JFWlhCaGNuUnRaVzUwTVRBd0xnWURWUVFERENkMFpXeGxaM0poWmkxdmNHVnlZWFJ2Y2k1MApaV3hsWjNKaFppMXZjR1Z5WVhSdmNpNXpkbU13Z2dJaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQ0R3QXdnZ0lLCkFvSUNBUUN2NnNENExIRnFCV1hNUGdkN0lHNkV0bGg5S2w1UGV5SGlxR0V0WEorN29hOUQ2ZnJoZmczOUpHaVAKZ1lHREhqSi9wdDJMN0JEM1A5Q25URjluUks1VStWTTFIUzJ1SHdVRGs0WjgyOEdmMGtyeWVSK0NwdzQ2RGtqNwoyM2tIQmZ3Y0F1WmVIRHh0RU9nK3JhTTlxTzRHSjY0TjgxdVVoQllvbWloK0NmYzJpd2c3SW41V3FobnhGQlBkCnJNNUVZOSswMyttUjRRTHF1ZDNCN25lMmdINVpBcDNydXQxVFZTanBHSStaQTBsbHVVUUgzUjVkdzBacFk2NWUKVzdVZlpTMU1rMzNtZHppVnN5Wm1IZXgxNXVkcGJWbGJQa29wM3Jaeks0allFLzRZWmZBTy9YVzRndk1Bb3l6TwpzSkY2VnRxSGJoWEppRU5UZ28xZjdoNGpLNEh3SlgzWTV3Z0swRWtydHEwdVhIcmtqT3RVbk4zTFZXM3hEMmwyCnJwcW8wcVR0WEJOR1FMTEhVMlVNUERMNTUzeWJEcXorSGVpeC9KZFAyaG9tdGZSMGpBLzJBdU5Qd0tXUm1pRVIKNkFWTWgrNkZMMXRFRVVESEdVU09SQVhnU0ZjcGhKVXRreFVGNVI5dy9SU3psTXBoK3ZEZUh6NGdEVEpSR0lZUwpEejFJYVB5TDFLUWRlMlNFdis5TFZrK2FMWWRzWTh5cW9jeXN3QUkrbGg3YUx0ZWxSRkhoU3VMR1JQVEJMNTlKCnh1eHJ4WkFsMGdoTWx1enNEZ081SDlSeHN6dWRCM0wraGwzdlEvdURLcUhQQnJMT0ZtR2dWcHVhb0x5Z1NwRngKZkE1Z3kvR3J4bWpOWFdyZjVXeW9KV0J0dmhUaUk2WGQwdzRpY0dzV0xmNFJGUitGZndJREFRQUJvMU13VVRBZApCZ05WSFE0RUZnUVVuUnkzb3p6aGxxSXUwSWhib3k5c3lObEcwMFV3SHdZRFZSMGpCQmd3Rm9BVW5SeTNvenpoCmxxSXUwSWhib3k5c3lObEcwMFV3RHdZRFZSMFRBUUgvQkFVd0F3RUIvekFOQmdrcWhraUc5dzBCQVFzRkFBT0MKQWdFQWZrSW5wcTUxNm43N1VkekNrdW9SSnk5SnFHMmszbDhGNGc3dlAzN0VuZVRQK1JOeVJscjcxNTRDa2J2UQp6TmFHYSs4WklrNHVrbjcrek1LUnEzQmNrWlBOUU92NjRacWx4a3F6NkpldC9zNWZnSXQyNXgrTXpjdUMvUzdqCkIwdCtDOEdUYTRNcUc0cmF0ZW5Lc3N1NGhoUkpkUGdzVXBJNytQZ1BCcmlweHZsOGFZNGJKL3UrbWN4azFtTUsKazFXQ1hEb09vN3M2cVF0ZFcxeGpTYXU2MHFwS3l0L0IxcXdkNmhpUXNYWFRHV1E3cFB4UWxvanZDbDlsUlJCYgpHRGl4QWY5RTJ2TXlYYXBURDNsZXlOQ0UzOGtjSVpON1JEQ0J0b04zVFQzZzMyb096bStxQS8wNWk4bGpFZy9ICm0rdXV2MXFucnJ0OTh0YXphMVQ1R0dhQVVNUjErbEoyTDhQaFNxbGdhT1libGl4dFR0ejFadTRVWTNSQTBjREkKckdJd21JY0IwVFF2V1Q1eDRTbTVUNkYxeFBnNnJ2YzNBVHlQdTY5SmNZb04rWFI4TlF6K0JCYmRpamFZV092dwpzT29PQUJPVTU2dHFXUXlwQ0xhc2FzSFVKVnVUdzhyMDNIcExOYVVpZER4S2JwOThyRlhzMlFOUlFWZ1JpdjJWCk5ucGhlYXl1WFBOSXJPcGJzcENTa2dHcnYwQXhsOWg4dWlGRGZUYUV6OU5LdC8rSzI1Q0RCRmxWQ1lReVJyL00KTGZnc0svUTBhbnhNVy9UMVp3SXlvVTh1MmExdnExK1dDakhGTEpOTlpBRTFubWZXcm1ZcWdQdm9LclJJb3JoOAo4L2VoRHFqKzU1UDhvRUNDeTJVWHlENzdBV0tERmlxempRblphVFhmME52WXdocz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
     rules:
-      - operations: [ "CREATE", "DELETE"]
+      - operations: ["CREATE", "DELETE"]
         apiGroups: ["*"]
         apiVersions: ["*"]
         resources: ["pods"]
@@ -87,24 +87,30 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - --telegraf-default-class=basic
-            - --telegraf-classes-secret=telegraf-operator-classes
-          env: 
-          - name: POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
+            - --telegraf-classes-directory=/config/classes
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           ports:
             - name: https
               containerPort: 9443
               protocol: TCP
           volumeMounts:
-          - name: certs
-            readOnly: true
-            mountPath: "/etc/certs"
+            - name: certs
+              readOnly: true
+              mountPath: "/etc/certs"
+            - name: telegraf-operator-classes
+              readOnly: true
+              mountPath: "/config/classes"
       volumes:
-      - name: certs
-        secret:
-          secretName: telegraf-operator-certs
+        - name: certs
+          secret:
+            secretName: telegraf-operator-certs
+        - name: telegraf-operator-classes
+          secret:
+            secretName: telegraf-operator-classes
 ---
 apiVersion: v1
 kind: Service

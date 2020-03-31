@@ -37,11 +37,9 @@ type podInjector struct {
 	client  client.Client
 	decoder *admission.Decoder
 	names.NameGenerator
-	Logger                    logr.Logger
-	TelegrafClassesSecretName string
-	TelegrafDefaultClass      string
-	ControllerNamespace       string
-	SidecarHandler            *sidecarHandler
+	Logger           logr.Logger
+	ClassDataHandler *classDataHandler
+	SidecarHandler   *sidecarHandler
 }
 
 // podInjector adds an annotation to every incoming pods.
@@ -90,7 +88,7 @@ func (a *podInjector) Handle(ctx context.Context, req admission.Request) admissi
 		handlerLog.Info("name: " + name + ",  pod_getname=" + pod.GetName())
 	}
 
-	classData, err := a.getClassData(pod)
+	classData, err := a.ClassDataHandler.getData(pod)
 	if err != nil {
 		a.Logger.Info(fmt.Sprintf("unable to find class data: %v ; not adding sidecar container", err))
 		return admission.Allowed("telegraf-operator could not create sidecar container")
@@ -106,24 +104,28 @@ func (a *podInjector) Handle(ctx context.Context, req admission.Request) admissi
 	// if the telegraf configuration could be created, add sidecar pod
 	secret, err := a.SidecarHandler.addSidecar(pod, pod.GetName(), req.Namespace, telegrafConf)
 	if err != nil {
+		a.Logger.Error(err, "unable to add sidecar container")
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
 	if req.Operation == admv1.Create {
 		err = a.client.Create(ctx, secret)
 		if err != nil {
+			a.Logger.Error(err, "unable to create secret")
 			return admission.Errored(http.StatusBadRequest, err)
 		}
 	}
 	if req.Operation == admv1.Update {
 		err = a.client.Update(ctx, secret)
 		if err != nil {
+			a.Logger.Error(err, "unable to update secret")
 			return admission.Errored(http.StatusBadRequest, err)
 		}
 	}
 
 	marshaledPod, err := json.Marshal(pod)
 	if err != nil {
+		a.Logger.Error(err, "unable to marshal JSON")
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
 
@@ -136,6 +138,7 @@ func (a *podInjector) Handle(ctx context.Context, req admission.Request) admissi
 // InjectClient injects the client.
 func (a *podInjector) InjectClient(c client.Client) error {
 	a.client = c
+
 	return nil
 }
 
@@ -146,26 +149,4 @@ func (a *podInjector) InjectClient(c client.Client) error {
 func (a *podInjector) InjectDecoder(d *admission.Decoder) error {
 	a.decoder = d
 	return nil
-}
-
-func (p *podInjector) getClassData(pod *corev1.Pod) (string, error) {
-	className := p.TelegrafDefaultClass
-	if extClass, ok := pod.Annotations[TelegrafClass]; ok {
-		className = extClass
-	}
-	secret := &corev1.Secret{}
-	err := p.client.Get(context.Background(), client.ObjectKey{
-		Namespace: p.ControllerNamespace,
-		Name:      p.TelegrafClassesSecretName,
-	}, secret)
-	if err != nil {
-		return "", err
-	}
-	for key, val := range secret.Data {
-		if key != className {
-			continue
-		}
-		return string(val), nil
-	}
-	return "", fmt.Errorf("telegraf-default-class '%s' couldn't be found in secret %s in namespace %s", className, p.TelegrafClassesSecretName, p.ControllerNamespace)
 }

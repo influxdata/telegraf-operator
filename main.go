@@ -50,9 +50,8 @@ func init() {
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
-	var telegrafClassesSecretName string
+	var telegrafClassesDirectory string
 	var defaultTelegrafClass string
-	var controllerNamespace string
 	var telegrafImage string
 	var enableDefaultInternalPlugin bool
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
@@ -60,9 +59,8 @@ func main() {
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 	flag.BoolVar(&enableDefaultInternalPlugin, "enable-default-internal-plugin", false,
 		"Enable internal plugin in telegraf for all sidecar. If disabled, can be set explicitly via appropriate annotation")
-	flag.StringVar(&telegrafClassesSecretName, "telegraf-classes-secret", "telegraf-classes", "The name of the secret in which are configured the telegraf classes")
+	flag.StringVar(&telegrafClassesDirectory, "telegraf-classes-directory", "/config/classes", "The name of the directory in which the telegraf classes are configured")
 	flag.StringVar(&defaultTelegrafClass, "telegraf-default-class", "default", "Default telegraf class to use")
-	flag.StringVar(&controllerNamespace, "namespace", os.Getenv("POD_NAMESPACE"), "Namespace in whick this pod is running in")
 	flag.StringVar(&telegrafImage, "telegraf-image", defaultTelegrafImage, "Telegraf image to inject")
 	flag.Parse()
 
@@ -90,15 +88,27 @@ func main() {
 
 	entryLog.Info("registering webhooks to the webhook server")
 
+	logger := setupLog.WithName("podInjector")
+
+	classData := &classDataHandler{
+		Logger:                   logger,
+		TelegrafClassesDirectory: telegrafClassesDirectory,
+		TelegrafDefaultClass:     defaultTelegrafClass,
+	}
+
+	err = classData.validateClassData()
+	if err != nil {
+		setupLog.Error(err, "class data validation failed")
+		os.Exit(1)
+	}
+
 	hookServer.Register("/mutate-v1-pod", &webhook.Admission{Handler: &podInjector{
-		TelegrafClassesSecretName: telegrafClassesSecretName,
-		TelegrafDefaultClass:      defaultTelegrafClass,
-		ControllerNamespace:       controllerNamespace,
-		Logger:                    setupLog.WithName("podInjector"),
+		Logger: logger,
 		SidecarHandler: &sidecarHandler{
 			TelegrafImage:               telegrafImage,
 			EnableDefaultInternalPlugin: enableDefaultInternalPlugin,
 		},
+		ClassDataHandler: classData,
 	}})
 
 	setupLog.Info("starting manager")
