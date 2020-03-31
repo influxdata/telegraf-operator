@@ -41,7 +41,7 @@ type podInjector struct {
 	TelegrafClassesSecretName string
 	TelegrafDefaultClass      string
 	ControllerNamespace       string
-	SidecarConfig             *sidecarConfig
+	SidecarHandler            *sidecarHandler
 }
 
 // podInjector adds an annotation to every incoming pods.
@@ -78,7 +78,7 @@ func (a *podInjector) Handle(ctx context.Context, req admission.Request) admissi
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}
-	if skip(pod) {
+	if a.SidecarHandler.skip(pod) {
 		a.Logger.Info("skipping pod as telegraf-injector should not handle it")
 		return admission.Allowed("telegraf-injector has no power over this pod")
 	}
@@ -96,7 +96,7 @@ func (a *podInjector) Handle(ctx context.Context, req admission.Request) admissi
 		return admission.Allowed("telegraf-operator could not create sidecar container")
 	}
 
-	telegrafConf, err := assembleConf(pod, a.SidecarConfig, classData)
+	telegrafConf, err := a.SidecarHandler.assembleConf(pod, classData)
 	if err != nil {
 		a.Logger.Info(fmt.Sprintf("unable to assemble telegraf configuration: %v", err))
 		return admission.Allowed("telegraf-operator could not create sidecar container")
@@ -104,7 +104,7 @@ func (a *podInjector) Handle(ctx context.Context, req admission.Request) admissi
 
 	a.Logger.Info("adding sidecar container")
 	// if the telegraf configuration could be created, add sidecar pod
-	secret, err := addSidecar(pod, a.SidecarConfig, pod.GetName(), req.Namespace, telegrafConf)
+	secret, err := a.SidecarHandler.addSidecar(pod, pod.GetName(), req.Namespace, telegrafConf)
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}

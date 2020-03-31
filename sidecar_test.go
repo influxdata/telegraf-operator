@@ -14,6 +14,7 @@ import (
 )
 
 func Test_skip(t *testing.T) {
+	handler := &sidecarHandler{}
 	withTelegraf := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
@@ -21,7 +22,7 @@ func Test_skip(t *testing.T) {
 			},
 		},
 	}
-	if skip(withTelegraf) {
+	if handler.skip(withTelegraf) {
 		t.Errorf("pod %v should not be skipped", withTelegraf.GetAnnotations())
 	}
 
@@ -32,7 +33,7 @@ func Test_skip(t *testing.T) {
 			},
 		},
 	}
-	if !skip(withoutTelegraf) {
+	if !handler.skip(withoutTelegraf) {
 		t.Errorf("pod %v should be skipped", withoutTelegraf.GetAnnotations())
 	}
 }
@@ -167,10 +168,10 @@ func Test_assembleConf(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			config := &sidecarConfig{
+			handler := &sidecarHandler{
 				EnableDefaultInternalPlugin: tt.enableDefaultInternalPlugin,
 			}
-			gotConfig, err := assembleConf(tt.pod, config, tt.classData)
+			gotConfig, err := handler.assembleConf(tt.pod, tt.classData)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("assembleConf() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -309,15 +310,15 @@ type: Opaque`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := &sidecarConfig{
+			handler := &sidecarHandler{
 				TelegrafImage:               defaultTelegrafImage,
 				EnableDefaultInternalPlugin: tt.enableDefaultInternalPlugin,
 			}
-			telegrafConf, err := assembleConf(tt.pod, config, "")
+			telegrafConf, err := handler.assembleConf(tt.pod, "")
 			if err != nil {
 				t.Errorf("unexpected error assembling sidecar configuration: %v", err)
 			}
-			secret, err := addSidecar(tt.pod, config, "myname", "mynamespace", telegrafConf)
+			secret, err := handler.addSidecar(tt.pod, "myname", "mynamespace", telegrafConf)
 			if err != nil {
 				t.Errorf("unexpected error adding to sidecar: %v", err)
 			}

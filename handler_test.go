@@ -139,7 +139,7 @@ func Test_podInjector_getClassData(t *testing.T) {
 				TelegrafDefaultClass:      tt.className,
 				ControllerNamespace:       tt.namespace,
 				Logger:                    &logrTesting.TestLogger{T: t},
-				SidecarConfig: &sidecarConfig{
+				SidecarHandler: &sidecarHandler{
 					TelegrafImage: defaultTelegrafImage,
 				},
 			}
@@ -172,7 +172,7 @@ func Test_podInjector_Handle(t *testing.T) {
 		objects []runtime.Object
 		req     admission.Request
 		want    want
-		config  *sidecarConfig
+		handler *sidecarHandler
 	}{
 		{
 			name: "error if no pod in request",
@@ -376,7 +376,7 @@ func Test_podInjector_Handle(t *testing.T) {
 					},
 				},
 			},
-			config: &sidecarConfig{
+			handler: &sidecarHandler{
 				TelegrafImage: "docker.io/library/telegraf:1.11",
 			},
 			fields: fields{
@@ -541,12 +541,12 @@ func Test_podInjector_Handle(t *testing.T) {
 				t.Fatalf("unable to create decoder: %v", err)
 			}
 
-			if tt.config == nil {
-				tt.config = &sidecarConfig{}
+			if tt.handler == nil {
+				tt.handler = &sidecarHandler{}
 			}
 
-			if tt.config.TelegrafImage == "" {
-				tt.config.TelegrafImage = defaultTelegrafImage
+			if tt.handler.TelegrafImage == "" {
+				tt.handler.TelegrafImage = defaultTelegrafImage
 			}
 
 			p := &podInjector{
@@ -554,7 +554,7 @@ func Test_podInjector_Handle(t *testing.T) {
 				decoder:              decoder,
 				TelegrafDefaultClass: tt.fields.TelegrafDefaultClass,
 				Logger:               &logrTesting.TestLogger{T: t},
-				SidecarConfig:        tt.config,
+				SidecarHandler:       tt.handler,
 			}
 
 			resp := p.Handle(context.Background(), tt.req)

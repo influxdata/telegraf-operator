@@ -95,7 +95,7 @@ func main() {
 		TelegrafDefaultClass:      defaultTelegrafClass,
 		ControllerNamespace:       controllerNamespace,
 		Logger:                    setupLog.WithName("podInjector"),
-		SidecarConfig: &sidecarConfig{
+		SidecarHandler: &sidecarHandler{
 			TelegrafImage:               telegrafImage,
 			EnableDefaultInternalPlugin: enableDefaultInternalPlugin,
 		},

@@ -40,13 +40,13 @@ const (
 	telegrafSecretPrefix = "telegraf-config"
 )
 
-type sidecarConfig struct {
+type sidecarHandler struct {
 	TelegrafImage               string
 	EnableDefaultInternalPlugin bool
 }
 
 // This function check if the pod have the correct annotations, otherwise the controller will skip this pod entirely
-func skip(pod *corev1.Pod) bool {
+func (h *sidecarHandler) skip(pod *corev1.Pod) bool {
 	for key := range pod.GetAnnotations() {
 		if strings.Contains(key, TelegrafAnnotationCommon) {
 			return false
@@ -55,14 +55,14 @@ func skip(pod *corev1.Pod) bool {
 	return true
 }
 
-func addSidecar(pod *corev1.Pod, config *sidecarConfig, name, namespace, telegrafConf string) (*corev1.Secret, error) {
-	pod.Spec.Containers = append(pod.Spec.Containers, newContainer(pod, config))
-	pod.Spec.Volumes = append(pod.Spec.Volumes, newVolume(name))
-	return newSecret(pod, name, namespace, telegrafConf)
+func (h *sidecarHandler) addSidecar(pod *corev1.Pod, name, namespace, telegrafConf string) (*corev1.Secret, error) {
+	pod.Spec.Containers = append(pod.Spec.Containers, h.newContainer(pod))
+	pod.Spec.Volumes = append(pod.Spec.Volumes, h.newVolume(name))
+	return h.newSecret(pod, name, namespace, telegrafConf)
 }
 
 // Assembling telegraf configuration
-func assembleConf(pod *corev1.Pod, config *sidecarConfig, classData string) (telegrafConf string, err error) {
+func (h *sidecarHandler) assembleConf(pod *corev1.Pod, classData string) (telegrafConf string, err error) {
 	ports := ports(pod)
 	if len(ports) != 0 {
 		path := "/metrics"
@@ -86,7 +86,7 @@ func assembleConf(pod *corev1.Pod, config *sidecarConfig, classData string) (tel
 			telegrafConf = fmt.Sprintf("%s\n%s", telegrafConf, fmt.Sprintf("[[inputs.prometheus]]\n  urls = [\"%s\"]\n  %s\n", strings.Join(urls, `", "`), intervalConfig))
 		}
 	}
-	enableInternal := config.EnableDefaultInternalPlugin
+	enableInternal := h.EnableDefaultInternalPlugin
 	if internalRaw, ok := pod.Annotations[TelegrafEnableInternal]; ok {
 		internal, err := strconv.ParseBool(internalRaw)
 		if err != nil {
@@ -111,7 +111,7 @@ func assembleConf(pod *corev1.Pod, config *sidecarConfig, classData string) (tel
 	return telegrafConf, err
 }
 
-func newSecret(pod *corev1.Pod, name, namespace, telegrafConf string) (*corev1.Secret, error) {
+func (h *sidecarHandler) newSecret(pod *corev1.Pod, name, namespace, telegrafConf string) (*corev1.Secret, error) {
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -128,7 +128,7 @@ func newSecret(pod *corev1.Pod, name, namespace, telegrafConf string) (*corev1.S
 	}, nil
 }
 
-func newVolume(name string) corev1.Volume {
+func (h *sidecarHandler) newVolume(name string) corev1.Volume {
 	return corev1.Volume{
 		Name: "telegraf-config",
 		VolumeSource: corev1.VolumeSource{
@@ -139,12 +139,12 @@ func newVolume(name string) corev1.Volume {
 	}
 }
 
-func newContainer(pod *corev1.Pod, config *sidecarConfig) corev1.Container {
+func (h *sidecarHandler) newContainer(pod *corev1.Pod) corev1.Container {
 	var telegrafImage string
 	if customTelegrafImage, ok := pod.Annotations[TelegrafImage]; ok {
 		telegrafImage = customTelegrafImage
 	} else {
-		telegrafImage = config.TelegrafImage
+		telegrafImage = h.TelegrafImage
 	}
 	baseContainer := corev1.Container{
 		Name:  "telegraf",
