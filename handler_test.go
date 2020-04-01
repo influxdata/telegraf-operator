@@ -138,8 +138,10 @@ func Test_podInjector_getClassData(t *testing.T) {
 				TelegrafClassesSecretName: tt.secretName,
 				TelegrafDefaultClass:      tt.className,
 				ControllerNamespace:       tt.namespace,
-				TelegrafImage:             defaultTelegrafImage,
 				Logger:                    &logrTesting.TestLogger{T: t},
+				SidecarHandler: &sidecarHandler{
+					TelegrafImage: defaultTelegrafImage,
+				},
 			}
 			got, err := p.getClassData(tt.pod)
 			if (err != nil) != tt.wantErr {
@@ -170,6 +172,7 @@ func Test_podInjector_Handle(t *testing.T) {
 		objects []runtime.Object
 		req     admission.Request
 		want    want
+		handler *sidecarHandler
 	}{
 		{
 			name: "error if no pod in request",
@@ -341,6 +344,61 @@ func Test_podInjector_Handle(t *testing.T) {
 			},
 		},
 		{
+			name: "inject telegraf with custom image passed as sidecar config into container",
+			req: admission.Request{
+				AdmissionRequest: admv1.AdmissionRequest{
+					Operation: admv1.Create,
+					Object: runtime.RawExtension{
+						Raw: []byte(`{
+								"apiVersion": "v1",
+								"kind": "Pod",
+								"metadata": {
+								  "name": "simple",
+								  "annotations": {
+									"telegraf.influxdata.com/port": "8080",
+									"telegraf.influxdata.com/path": "/v1/metrics",
+									"telegraf.influxdata.com/interval": "5s"
+								  }
+								},
+								"spec": {
+								  "containers": [
+									{
+									  "name": "busybox",
+									  "image": "busybox",
+									  "args": [
+										"sleep",
+										"1000000"
+									  ]
+									}
+								  ]
+								}
+							  }`),
+					},
+				},
+			},
+			handler: &sidecarHandler{
+				TelegrafImage: "docker.io/library/telegraf:1.11",
+			},
+			fields: fields{
+				TelegrafDefaultClass: TelegrafClass,
+			},
+			objects: []runtime.Object{
+				&corev1.Secret{
+					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
+				},
+			},
+			want: want{
+				Allowed: true,
+				Patches: []string{
+					`{"op":"add","path":"/metadata/creationTimestamp"}`,
+					`{"op":"add","path":"/spec/containers/0/resources","value":{}}`,
+					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.11","name":"telegraf","resources":{"limits":{"cpu":"500m","memory":"500Mi"},"requests":{"cpu":"50m","memory":"50Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
+					`{"op":"add","path":"/spec/volumes","value":[{"name":"telegraf-config","secret":{"secretName":"telegraf-config-simple"}}]}`,
+					`{"op":"add","path":"/status","value":{}}`,
+				},
+			},
+		},
+		{
 			name: "inject telegraf with custom image into container",
 			req: admission.Request{
 				AdmissionRequest: admv1.AdmissionRequest{
@@ -483,12 +541,20 @@ func Test_podInjector_Handle(t *testing.T) {
 				t.Fatalf("unable to create decoder: %v", err)
 			}
 
+			if tt.handler == nil {
+				tt.handler = &sidecarHandler{}
+			}
+
+			if tt.handler.TelegrafImage == "" {
+				tt.handler.TelegrafImage = defaultTelegrafImage
+			}
+
 			p := &podInjector{
 				client:               client,
 				decoder:              decoder,
 				TelegrafDefaultClass: tt.fields.TelegrafDefaultClass,
-				TelegrafImage:        defaultTelegrafImage,
 				Logger:               &logrTesting.TestLogger{T: t},
+				SidecarHandler:       tt.handler,
 			}
 
 			resp := p.Handle(context.Background(), tt.req)

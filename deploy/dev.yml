@@ -84,6 +84,7 @@ spec:
       containers:
         - name: controller
           image: quay.io/influxdb/telegraf-operator:latest
+          imagePullPolicy: IfNotPresent
           args:
             - --telegraf-default-class=basic
             - --telegraf-classes-secret=telegraf-operator-classes
