@@ -1,4 +1,9 @@
 apiVersion: v1
+kind: Namespace
+metadata:
+  name: telegraf-operator
+---
+apiVersion: v1
 kind: Secret
 metadata:
   name: telegraf-operator-classes

@@ -81,5 +81,43 @@ genca:
 	kubectl create secret tls telegraf-injector-certs -n telegraf-injector --cert=deploy/stubdata/tls.crt --key=deploy/stubdata/tls.key
 	cat deploy/stubdata/tls.crt | base64 | pbcopy
 
-start:
-	kind create cluster --name=test
+kind-start:
+	# create kind cluster
+	kind create cluster --name=telegraf-operator-test
+	# ensure correct kubectl context is set and used or fail otherwise
+	kubectl config use-context kind-telegraf-operator-test
+	# deploy InfluxDB in the cluster
+	kubectl apply -f deploy/influxdb.yml
+
+kind-delete:
+	kind delete cluster --name=telegraf-operator-test
+
+kind-build:
+	docker build -t quay.io/influxdb/telegraf-operator:latest .
+	kind load docker-image -q --name telegraf-operator-test quay.io/influxdb/telegraf-operator:latest
+
+kind-delete-pod:
+	# ensure correct kubectl context is set and used or fail otherwise
+	kubectl config use-context kind-telegraf-operator-test
+	kubectl delete pod --namespace=telegraf-operator -l app=telegraf-operator --wait=false
+
+kind-cleanup:
+	# ensure correct kubectl context is set and used or fail otherwise
+	kubectl config use-context kind-telegraf-operator-test
+	# use || true for cleanup to avoid issues when a namespace or other object does not exist
+	kubectl delete MutatingWebhookConfiguration telegraf-operator	|| true
+	kubectl delete namespace test || true
+	kubectl delete namespace telegraf-operator || true
+
+kind-test:
+	# ensure correct kubectl context is set and used or fail otherwise
+	kubectl config use-context kind-telegraf-operator-test
+	kubectl apply -f examples/classes.yml
+	kubectl apply -f deploy/dev.yml
+	# wait 15 seconds to ensure the pod is already in running state
+	sleep 15
+	# deploy redis as sample deployment
+	kubectl create namespace test
+	kubectl apply -f examples/redis.yml
+	sleep 2
+	kubectl describe pod --namespace=test redis
