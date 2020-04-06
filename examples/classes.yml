@@ -9,34 +9,8 @@ metadata:
   name: telegraf-operator-classes
   namespace: telegraf-operator
 stringData:
-  acc: |+
-    [[outputs.influxdb_v2]]
-      urls = ["zzzzzzz"]
-      token = "zzzzzz"
-      organization = "xxxx"
-      bucket = "infra"
-      timeout = "5s"
-    [global_tags]
-      env = "acc"
-      hostname = "$HOSTNAME"
-      nodename = "$NODENAME"
-    [agent]      interval = "10s"
-      round_interval = true
-      metric_batch_size = 100000
-      metric_buffer_limit = 100000
-      collection_jitter = "0s"
-  influxdb_v2: |+
-    [[outputs.influxdb_v2]]
-      urls = ["xxxxxx"]
-      token = "xxxxxxx"
-      organization = "xxxxxxx"
-      bucket = "app"
-      timeout = "5s"
-      metric_batch_size = 10000
-      metric_buffer_limit = 100000
-    [global_tags]
-      hostname = "$HOSTNAME"
-      nodename = "$NODENAME"
+  # basic classes that can be used to develop telegraf-operator ; these classes
+  # report to InfluxDB v1 in same cluster as well as to stdout for convenience
   app: |+
     [[outputs.influxdb]]
       urls = ["http://influxdb.influxdb:8086"]
@@ -63,3 +37,33 @@ stringData:
       hostname = "$HOSTNAME"
       nodename = "$NODENAME"
       type = "infra"
+  # example of reporting to InfluxDB v2
+  influxdb_v2: |+
+    [[outputs.influxdb_v2]]
+      urls = ["xxxxxx"]
+      token = "xxxxxxx"
+      organization = "xxxxxxx"
+      bucket = "app"
+      timeout = "5s"
+      metric_batch_size = 10000
+      metric_buffer_limit = 100000
+    [global_tags]
+      hostname = "$HOSTNAME"
+      nodename = "$NODENAME"
+  # example for a specific environment that sets global tags and reports to InfluxDB V2
+  acc: |+
+    [[outputs.influxdb_v2]]
+      urls = ["zzzzzzz"]
+      token = "zzzzzz"
+      organization = "xxxx"
+      bucket = "infra"
+      timeout = "5s"
+    [global_tags]
+      env = "acc"
+      hostname = "$HOSTNAME"
+      nodename = "$NODENAME"
+    [agent]      interval = "10s"
+      round_interval = true
+      metric_batch_size = 100000
+      metric_buffer_limit = 100000
+      collection_jitter = "0s"

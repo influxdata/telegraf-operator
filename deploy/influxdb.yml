@@ -19,8 +19,11 @@ spec:
         app: influxdb
     spec:
       containers:
-      - name: influxdb
-        image: influxdb:1.7.9
+        - name: influxdb
+          image: influxdb:1.7.9
+        - name: chronograf
+          image: chronograf:1.6.2
+          args: ["--influxdb-url=http://localhost:8086"]
 ---
 apiVersion: v1
 kind: Service
@@ -31,7 +34,9 @@ metadata:
   namespace: influxdb
 spec:
   ports:
-  - name: server
-    port: 8086
+    - name: server
+      port: 8086
+    - name: chronograf
+      port: 8888
   selector:
     app: influxdb

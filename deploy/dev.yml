@@ -84,8 +84,14 @@ spec:
       containers:
         - name: controller
           image: quay.io/influxdb/telegraf-operator:latest
+          # use IfNotPresent image pull policy to allow pushing / injecting
+          # container images to Kubernetes directly (such as when using kind)
           imagePullPolicy: IfNotPresent
           args:
+            # for development purposes, enable internal plugin to report
+            # telegraf metrics even if no other data is available
+            - --enable-default-internal-plugin=true
+            # default class to use if not specified by the pod
             - --telegraf-default-class=basic
             - --telegraf-classes-secret=telegraf-operator-classes
           env: 
