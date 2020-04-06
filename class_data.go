@@ -1,0 +1,85 @@
+/*
+Copyright (c) 2020 InfluxData
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"path/filepath"
+
+	corev1 "k8s.io/api/core/v1"
+
+	"github.com/go-logr/logr"
+	"github.com/influxdata/toml"
+)
+
+type classDataHandler struct {
+	Logger                   logr.Logger
+	TelegrafClassesDirectory string
+	TelegrafDefaultClass     string
+}
+
+func (c *classDataHandler) validateClassData() error {
+	classDataValid := true
+	filesAvailable := false
+
+	c.Logger.Info(fmt.Sprintf("validating class data from directory %s", c.TelegrafClassesDirectory))
+
+	files, err := ioutil.ReadDir(c.TelegrafClassesDirectory)
+	if err != nil {
+		c.Logger.Info(fmt.Sprintf("unable to retrieve class data from directory: %v", err))
+	}
+
+	for _, file := range files {
+		if !file.Mode().IsDir() {
+			data, err := ioutil.ReadFile(filepath.Join(c.TelegrafClassesDirectory, file.Name()))
+			if err != nil {
+				c.Logger.Info(fmt.Sprintf("unable to retrieve class data from file %s: %v", file.Name(), err))
+			} else {
+				filesAvailable = true
+				if _, err := toml.Parse(data); err != nil {
+					c.Logger.Info(fmt.Sprintf("unable to parse class data %s: %v", file.Name(), err))
+					classDataValid = false
+				}
+			}
+		}
+	}
+
+	if !classDataValid {
+		return fmt.Errorf("class data contains errors ; unable to continue")
+	}
+
+	if !filesAvailable {
+		return fmt.Errorf("no class data found ; unable to continue")
+	}
+
+	return nil
+}
+
+func (c *classDataHandler) getData(pod *corev1.Pod) (string, error) {
+	className := c.TelegrafDefaultClass
+	if extClass, ok := pod.Annotations[TelegrafClass]; ok {
+		className = extClass
+	}
+
+	data, err := ioutil.ReadFile(filepath.Join(c.TelegrafClassesDirectory, className))
+
+	if err != nil {
+		c.Logger.Info("unable to class data for %s: %v", className, err)
+		return "", err
+	}
+
+	return string(data), nil
+}
