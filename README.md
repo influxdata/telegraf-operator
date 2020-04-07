@@ -139,6 +139,11 @@ The available pod annotions are:
 - `telegraf.influxdata.com/image` : is used to configure telegraf image to be used for the `telegraf` sidecar container
 - `telegraf.influxdata.com/class` : configures which kind of class to use (classes are configured on the operator)
 - `telegraf.influxdata.com/secret-env` : allows adding secrets to the telegraf sidecar in the form of environment variables
+- `telegraf.influxdata.com/requests-cpu` : allows specifying resource requests for CPU
+- `telegraf.influxdata.com/requests-memory` : allows specifying resource requests for memory
+- `telegraf.influxdata.com/limits-cpu` : allows specifying resource limits for CPU
+- `telegraf.influxdata.com/limits-memory` : allows specifying resource limits for memory
+
 
 # Contributing to telegraf-operator
 

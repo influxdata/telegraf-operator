@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/influxdata/toml"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -36,13 +37,25 @@ const (
 	TelegrafSecretEnv = "telegraf.influxdata.com/secret-env"
 	// TelegrafImage allows specifying a custom telegraf image to be used in the sidecar container
 	TelegrafImage = "telegraf.influxdata.com/image"
-
+	// TelegrafRequestsCPU allows specifying custom CPU resource requests
+	TelegrafRequestsCPU = "telegraf.influxdata.com/requests-cpu"
+	// TelegrafRequestsMemory allows specifying custom memory resource requests
+	TelegrafRequestsMemory = "telegraf.influxdata.com/requests-memory"
+	// TelegrafLimitsCPU allows specifying custom CPU resource limits
+	TelegrafLimitsCPU = "telegraf.influxdata.com/limits-cpu"
+	// TelegrafLimitsMemory allows specifying custom memory resource limits
+	TelegrafLimitsMemory = "telegraf.influxdata.com/limits-memory"
 	telegrafSecretPrefix = "telegraf-config"
 )
 
 type sidecarHandler struct {
+	Logger                      logr.Logger
 	TelegrafImage               string
 	EnableDefaultInternalPlugin bool
+	RequestsCPU                 string
+	RequestsMemory              string
+	LimitsCPU                   string
+	LimitsMemory                string
 }
 
 // This function check if the pod have the correct annotations, otherwise the controller will skip this pod entirely
@@ -55,8 +68,29 @@ func (h *sidecarHandler) skip(pod *corev1.Pod) bool {
 	return true
 }
 
+func (h *sidecarHandler) validateRequestsAndLimits() error {
+	if _, err := resource.ParseQuantity(h.RequestsCPU); err != nil {
+		return err
+	}
+	if _, err := resource.ParseQuantity(h.RequestsMemory); err != nil {
+		return err
+	}
+	if _, err := resource.ParseQuantity(h.LimitsCPU); err != nil {
+		return err
+	}
+	if _, err := resource.ParseQuantity(h.LimitsMemory); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (h *sidecarHandler) addSidecar(pod *corev1.Pod, name, namespace, telegrafConf string) (*corev1.Secret, error) {
-	pod.Spec.Containers = append(pod.Spec.Containers, h.newContainer(pod))
+	container, err := h.newContainer(pod)
+	if err != nil {
+		return nil, err
+	}
+	pod.Spec.Containers = append(pod.Spec.Containers, container)
 	pod.Spec.Volumes = append(pod.Spec.Volumes, h.newVolume(name))
 	return h.newSecret(pod, name, namespace, telegrafConf)
 }
@@ -139,24 +173,80 @@ func (h *sidecarHandler) newVolume(name string) corev1.Volume {
 	}
 }
 
-func (h *sidecarHandler) newContainer(pod *corev1.Pod) corev1.Container {
+// parseCustomOrDefaultQuantity parses custom quantity from annotations,
+// defaulting to quantity specified to the handler if the custom one is not valid
+func (h *sidecarHandler) parseCustomOrDefaultQuantity(customQuantity string, defaultQuantity string) (quantity resource.Quantity, err error) {
+	if quantity, err = resource.ParseQuantity(customQuantity); err != nil {
+		h.Logger.Info(fmt.Sprintf("unable to parse resource \"%s\": %v", customQuantity, err))
+		quantity, err = resource.ParseQuantity(defaultQuantity)
+	}
+	return quantity, err
+}
+
+func (h *sidecarHandler) newContainer(pod *corev1.Pod) (corev1.Container, error) {
 	var telegrafImage string
+	var telegrafRequestsCPU string
+	var telegrafRequestsMemory string
+	var telegrafLimitsCPU string
+	var telegrafLimitsMemory string
+
 	if customTelegrafImage, ok := pod.Annotations[TelegrafImage]; ok {
 		telegrafImage = customTelegrafImage
 	} else {
 		telegrafImage = h.TelegrafImage
 	}
+	if customTelegrafRequestsCPU, ok := pod.Annotations[TelegrafRequestsCPU]; ok {
+		telegrafRequestsCPU = customTelegrafRequestsCPU
+	} else {
+		telegrafRequestsCPU = h.RequestsCPU
+	}
+	if customTelegrafRequestsMemory, ok := pod.Annotations[TelegrafRequestsMemory]; ok {
+		telegrafRequestsMemory = customTelegrafRequestsMemory
+	} else {
+		telegrafRequestsMemory = h.RequestsMemory
+	}
+	if customTelegrafLimitsCPU, ok := pod.Annotations[TelegrafLimitsCPU]; ok {
+		telegrafLimitsCPU = customTelegrafLimitsCPU
+	} else {
+		telegrafLimitsCPU = h.LimitsCPU
+	}
+	if customTelegrafLimitsMemory, ok := pod.Annotations[TelegrafLimitsMemory]; ok {
+		telegrafLimitsMemory = customTelegrafLimitsMemory
+	} else {
+		telegrafLimitsMemory = h.LimitsMemory
+	}
+
+	var parsedRequestsCPU resource.Quantity
+	var parsedRequestsMemory resource.Quantity
+	var parsedLimitsCPU resource.Quantity
+	var parsedLimitsMemory resource.Quantity
+	var err error
+
+	if parsedRequestsCPU, err = h.parseCustomOrDefaultQuantity(telegrafRequestsCPU, h.RequestsCPU); err != nil {
+		return corev1.Container{}, err
+	}
+	if parsedRequestsMemory, err = h.parseCustomOrDefaultQuantity(telegrafRequestsMemory, h.RequestsMemory); err != nil {
+		return corev1.Container{}, err
+	}
+
+	if parsedLimitsCPU, err = h.parseCustomOrDefaultQuantity(telegrafLimitsCPU, h.LimitsCPU); err != nil {
+		return corev1.Container{}, err
+	}
+	if parsedLimitsMemory, err = h.parseCustomOrDefaultQuantity(telegrafLimitsMemory, h.LimitsMemory); err != nil {
+		return corev1.Container{}, err
+	}
+
 	baseContainer := corev1.Container{
 		Name:  "telegraf",
 		Image: telegrafImage,
 		Resources: corev1.ResourceRequirements{
 			Limits: corev1.ResourceList{
-				"cpu":    resource.MustParse("500m"),
-				"memory": resource.MustParse("500Mi"),
+				"cpu":    parsedLimitsCPU,
+				"memory": parsedLimitsMemory,
 			},
 			Requests: corev1.ResourceList{
-				"cpu":    resource.MustParse("50m"),
-				"memory": resource.MustParse("50Mi"),
+				"cpu":    parsedRequestsCPU,
+				"memory": parsedRequestsMemory,
 			},
 		},
 		Env: []corev1.EnvVar{
@@ -177,6 +267,7 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod) corev1.Container {
 			},
 		},
 	}
+
 	if secretEnv, ok := pod.Annotations[TelegrafSecretEnv]; ok {
 		baseContainer.EnvFrom = []corev1.EnvFromSource{
 			{
@@ -189,7 +280,7 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod) corev1.Container {
 			},
 		}
 	}
-	return baseContainer
+	return baseContainer, nil
 }
 
 // ports gathers and merges unique ports from both TelegrafMetricsPort and TelegrafMetricsPorts.
