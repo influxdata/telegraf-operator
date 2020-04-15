@@ -38,7 +38,11 @@ var (
 )
 
 const (
-	defaultTelegrafImage = "docker.io/library/telegraf:1.13"
+	defaultTelegrafImage  = "docker.io/library/telegraf:1.13"
+	defaultRequestsCPU    = "50m"
+	defaultRequestsMemory = "50Mi"
+	defaultLimitsCPU      = "500m"
+	defaultLimitsMemory   = "500Mi"
 )
 
 func init() {
@@ -54,6 +58,11 @@ func main() {
 	var defaultTelegrafClass string
 	var telegrafImage string
 	var enableDefaultInternalPlugin bool
+	var telegrafRequestsCPU string
+	var telegrafRequestsMemory string
+	var telegrafLimitsCPU string
+	var telegrafLimitsMemory string
+
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
@@ -62,6 +71,10 @@ func main() {
 	flag.StringVar(&telegrafClassesDirectory, "telegraf-classes-directory", "/config/classes", "The name of the directory in which the telegraf classes are configured")
 	flag.StringVar(&defaultTelegrafClass, "telegraf-default-class", "default", "Default telegraf class to use")
 	flag.StringVar(&telegrafImage, "telegraf-image", defaultTelegrafImage, "Telegraf image to inject")
+	flag.StringVar(&telegrafRequestsCPU, "telegraf-requests-cpu", defaultRequestsCPU, "Default requests for CPU")
+	flag.StringVar(&telegrafRequestsMemory, "telegraf-requests-memory", defaultRequestsMemory, "Default requests for memory")
+	flag.StringVar(&telegrafLimitsCPU, "telegraf-limits-cpu", defaultLimitsCPU, "Default limits for CPU")
+	flag.StringVar(&telegrafLimitsMemory, "telegraf-limits-memory", defaultLimitsMemory, "Default limits for memory")
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(func(o *zap.Options) {
@@ -102,12 +115,25 @@ func main() {
 		os.Exit(1)
 	}
 
+	sidecar := &sidecarHandler{
+		Logger:                      logger,
+		TelegrafImage:               telegrafImage,
+		EnableDefaultInternalPlugin: enableDefaultInternalPlugin,
+		RequestsCPU:                 telegrafRequestsCPU,
+		RequestsMemory:              telegrafRequestsMemory,
+		LimitsCPU:                   telegrafLimitsCPU,
+		LimitsMemory:                telegrafLimitsMemory,
+	}
+
+	err = sidecar.validateRequestsAndLimits()
+	if err != nil {
+		setupLog.Error(err, "default resources validation failed")
+		os.Exit(1)
+	}
+
 	hookServer.Register("/mutate-v1-pod", &webhook.Admission{Handler: &podInjector{
-		Logger: logger,
-		SidecarHandler: &sidecarHandler{
-			TelegrafImage:               telegrafImage,
-			EnableDefaultInternalPlugin: enableDefaultInternalPlugin,
-		},
+		Logger:           logger,
+		SidecarHandler:   sidecar,
 		ClassDataHandler: classData,
 	}})
 

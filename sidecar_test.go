@@ -2,11 +2,11 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 
+	logrTesting "github.com/go-logr/logr/testing"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -14,7 +14,12 @@ import (
 )
 
 func Test_skip(t *testing.T) {
-	handler := &sidecarHandler{}
+	handler := &sidecarHandler{
+		RequestsCPU:    defaultRequestsCPU,
+		RequestsMemory: defaultRequestsMemory,
+		LimitsCPU:      defaultLimitsCPU,
+		LimitsMemory:   defaultLimitsMemory,
+	}
 	withTelegraf := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
@@ -35,6 +40,49 @@ func Test_skip(t *testing.T) {
 	}
 	if !handler.skip(withoutTelegraf) {
 		t.Errorf("pod %v should be skipped", withoutTelegraf.GetAnnotations())
+	}
+}
+
+func Test_validateRequestsAndLimits(t *testing.T) {
+	tests := []struct {
+		name    string
+		sidecar *sidecarHandler
+		wantErr bool
+	}{
+		{
+			name: "validate default values",
+			sidecar: &sidecarHandler{
+				RequestsCPU:    defaultRequestsCPU,
+				RequestsMemory: defaultRequestsMemory,
+				LimitsCPU:      defaultLimitsCPU,
+				LimitsMemory:   defaultLimitsMemory,
+			},
+			wantErr: false,
+		},
+		{
+			name: "validate incorrect values",
+			sidecar: &sidecarHandler{
+				RequestsCPU:    "100x",
+				RequestsMemory: "100x",
+				LimitsCPU:      "100x",
+				LimitsMemory:   "100x",
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.sidecar.Logger = &logrTesting.TestLogger{T: t}
+
+			err := tt.sidecar.validateRequestsAndLimits()
+			if tt.wantErr && err == nil {
+				t.Errorf("expected an error, but none was reported")
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("unexpected error received: %v", err)
+			}
+		})
 	}
 }
 
@@ -170,6 +218,11 @@ func Test_assembleConf(t *testing.T) {
 
 			handler := &sidecarHandler{
 				EnableDefaultInternalPlugin: tt.enableDefaultInternalPlugin,
+				RequestsCPU:                 defaultRequestsCPU,
+				RequestsMemory:              defaultRequestsMemory,
+				LimitsCPU:                   defaultLimitsCPU,
+				LimitsMemory:                defaultLimitsMemory,
+				Logger:                      &logrTesting.TestLogger{T: t},
 			}
 			gotConfig, err := handler.assembleConf(tt.pod, tt.classData)
 			if (err != nil) != tt.wantErr {
@@ -306,6 +359,94 @@ stringData:
 
 type: Opaque`,
 		},
+		{
+			name: "validate custom resources and limits",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafRequestsCPU:    "100m",
+						TelegrafRequestsMemory: "100Mi",
+						TelegrafLimitsCPU:      "400m",
+						TelegrafLimitsMemory:   "400Mi",
+					},
+				},
+			},
+			wantPod: `
+metadata:
+  annotations:
+    telegraf.influxdata.com/limits-cpu: 400m
+    telegraf.influxdata.com/limits-memory: 400Mi
+    telegraf.influxdata.com/requests-cpu: 100m
+    telegraf.influxdata.com/requests-memory: 100Mi
+  creationTimestamp: null
+spec:
+  containers:
+  - env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    image: docker.io/library/telegraf:1.13
+    name: telegraf
+    resources:
+      limits:
+        cpu: 400m
+        memory: 400Mi
+      requests:
+        cpu: 100m
+        memory: 100Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-config
+  volumes:
+  - name: telegraf-config
+    secret:
+      secretName: telegraf-config-myname
+status: {}
+			`,
+		},
+		{
+			name: "validate incorrect resources to fallback default resources",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafRequestsCPU: "100x",
+						TelegrafLimitsCPU:   "750m",
+					},
+				},
+			},
+			wantPod: `
+metadata:
+  annotations:
+    telegraf.influxdata.com/limits-cpu: 750m
+    telegraf.influxdata.com/requests-cpu: 100x
+  creationTimestamp: null
+spec:
+  containers:
+  - env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    image: docker.io/library/telegraf:1.13
+    name: telegraf
+    resources:
+      limits:
+        cpu: 750m
+        memory: 500Mi
+      requests:
+        cpu: 50m
+        memory: 50Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-config
+  volumes:
+  - name: telegraf-config
+    secret:
+      secretName: telegraf-config-myname
+status: {}
+`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -313,6 +454,11 @@ type: Opaque`,
 			handler := &sidecarHandler{
 				TelegrafImage:               defaultTelegrafImage,
 				EnableDefaultInternalPlugin: tt.enableDefaultInternalPlugin,
+				RequestsCPU:                 defaultRequestsCPU,
+				RequestsMemory:              defaultRequestsMemory,
+				LimitsCPU:                   defaultLimitsCPU,
+				LimitsMemory:                defaultLimitsMemory,
+				Logger:                      &logrTesting.TestLogger{T: t},
 			}
 			telegrafConf, err := handler.assembleConf(tt.pod, "")
 			if err != nil {
@@ -331,7 +477,6 @@ type: Opaque`,
 
 			if tt.wantPod != "" {
 				if want, got := strings.TrimSpace(tt.wantPod), strings.TrimSpace(toYAML(t, tt.pod)); got != want {
-					fmt.Printf("WTF\n%s\n", got)
 					t.Errorf("unexpected pod got:\n%v\nwant:\n%v", got, want)
 				}
 			}
