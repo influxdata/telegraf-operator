@@ -8,10 +8,11 @@ workflows:
       - deploy:
           requires:
             - build
+          filters:
             branches:
               only:
                 - master
-      - deploy-tags:
+      - deploytags:
           requires:
             - build
           filters:
@@ -91,7 +92,7 @@ jobs:
             docker build --no-cache -t "$IMAGE:$CIRCLE_SHA1" .
             docker login -u "$QUAY_USER" -p "$QUAY_PASS" quay.io
             docker push "$IMAGE:$CIRCLE_SHA1"
-  deploy-tags:
+  deploytags:
     docker:
       - image: alpine:latest
     steps:
