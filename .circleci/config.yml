@@ -9,6 +9,8 @@ workflows:
           requires:
             - build
           filters:
+            tags:
+              only: /^v.*/
             branches:
               only:
                 - master
@@ -83,9 +85,10 @@ jobs:
           name: Docker build and push
           command: |
             IMAGE="quay.io/influxdb/telegraf-operator"
-            SHA="$(git rev-list -1 --abbrev-commit 'HEAD^{commit}')"
-            docker build --no-cache -t "$IMAGE:$SHA" .
+            docker build --no-cache -t "$IMAGE:$CIRCLE_SHA1" .
             docker login -u "$QUAY_USER" -p "$QUAY_PASS" quay.io
-            docker push "$IMAGE:$SHA"
-            docker tag "$IMAGE:$SHA" "$IMAGE:latest"
+            docker push "$IMAGE:$CIRCLE_SHA1"
+            docker tag "$IMAGE:$CIRCLE_SHA1" "$IMAGE:latest"
+            docker tag "$IMAGE:$CIRCLE_SHA1" "$IMAGE:CIRCLE_TAG"
+            docker push "$IMAGE:CIRCLE_TAG"
             docker push "$IMAGE:latest"
