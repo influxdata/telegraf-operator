@@ -8,12 +8,15 @@ workflows:
       - deploy:
           requires:
             - build
-          filters:
-            tags:
-              only: /^v.*/
             branches:
               only:
                 - master
+      - deploy-tags:
+          requires:
+            - build
+          filters:
+            tags:
+              only: /.*/
 
 jobs:
   build:
@@ -88,7 +91,20 @@ jobs:
             docker build --no-cache -t "$IMAGE:$CIRCLE_SHA1" .
             docker login -u "$QUAY_USER" -p "$QUAY_PASS" quay.io
             docker push "$IMAGE:$CIRCLE_SHA1"
-            docker tag "$IMAGE:$CIRCLE_SHA1" "$IMAGE:latest"
-            docker tag "$IMAGE:$CIRCLE_SHA1" "$IMAGE:$CIRCLE_TAG"
+  deploy-tags:
+    docker:
+      - image: alpine:latest
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Install git and docker
+          command: |
+            apk add --no-cache git docker # TODO: add option to disable progress bar
+      - run:
+          name: Docker build and push
+          command: |
+            IMAGE="quay.io/influxdb/telegraf-operator"
+            docker build --no-cache -t "$IMAGE:$CIRCLE_TAG" .
+            docker login -u "$QUAY_USER" -p "$QUAY_PASS" quay.io
             docker push "$IMAGE:$CIRCLE_TAG"
-            docker push "$IMAGE:latest"
