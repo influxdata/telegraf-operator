@@ -14,6 +14,8 @@ No one likes monitoring/observability, everybody wants to deploy applications bu
 
 # Getting started with telegraf-operator
 
+Releasing docker images at: [Quay](https://quay.io/repository/influxdb/telegraf-operator?tag=latest&tab=tags)
+
 ## Adding telegraf-operator in development mode
 
 We don't provide yet a production-like deployment of `telegraf-operator` given the alpha status of the project

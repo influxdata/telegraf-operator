@@ -89,6 +89,6 @@ jobs:
             docker login -u "$QUAY_USER" -p "$QUAY_PASS" quay.io
             docker push "$IMAGE:$CIRCLE_SHA1"
             docker tag "$IMAGE:$CIRCLE_SHA1" "$IMAGE:latest"
-            docker tag "$IMAGE:$CIRCLE_SHA1" "$IMAGE:CIRCLE_TAG"
-            docker push "$IMAGE:CIRCLE_TAG"
+            docker tag "$IMAGE:$CIRCLE_SHA1" "$IMAGE:$CIRCLE_TAG"
+            docker push "$IMAGE:$CIRCLE_TAG"
             docker push "$IMAGE:latest"
