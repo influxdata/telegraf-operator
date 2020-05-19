@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	corev1 "k8s.io/api/core/v1"
@@ -43,7 +44,13 @@ func (c *classDataHandler) validateClassData() error {
 	}
 
 	for _, file := range files {
-		if !file.Mode().IsDir() {
+		stat, err := os.Stat(filepath.Join(c.TelegrafClassesDirectory, file.Name()))
+		if err != nil {
+			c.Logger.Info(fmt.Sprintf("unable to stat %s: %v", file.Name(), err))
+			continue
+		}
+
+		if stat.Mode().IsRegular() {
 			data, err := ioutil.ReadFile(filepath.Join(c.TelegrafClassesDirectory, file.Name()))
 			if err != nil {
 				c.Logger.Info(fmt.Sprintf("unable to retrieve class data from file %s: %v", file.Name(), err))
