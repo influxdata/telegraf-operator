@@ -130,7 +130,7 @@ Please see [redis input plugin documentation](https://github.com/influxdata/tele
 
 The `telegraf.influxdata.com/class` specifies that the `basic` class above should be used.
 
-The available pod annotions are:
+The available pod annotations are:
 - `telegraf.influxdata.com/port`: is used to configure which port telegraf should scrape
 - `telegraf.influxdata.com/ports` : is used to configure which port telegraf should scrape, comma separated list of ports to scrape
 - `telegraf.influxdata.com/path` : is used to configure at which path to configure scraping to (a port must be configured also), will apply to all ports if multiple are configured
