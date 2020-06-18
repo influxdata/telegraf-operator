@@ -53,21 +53,29 @@ func (a *podInjector) Handle(ctx context.Context, req admission.Request) admissi
 	handlerLog.V(9).Info("request=" + string(marshaled))
 
 	if req.Operation == admv1.Delete {
-		secret := &corev1.Secret{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Secret",
-				APIVersion: "v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%s-%s", telegrafSecretPrefix, req.Name),
-				Namespace: req.Namespace,
-			},
+		deleteFailed := false
+		for _, name := range a.SidecarHandler.telegrafSecretNames(req.Name) {
+			secret := &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Secret",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: req.Namespace,
+				},
+			}
+			handlerLog.Info("Deleting secret=" + secret.Name + "/" + secret.Namespace)
+			err := a.client.Delete(ctx, secret)
+			if err != nil {
+				handlerLog.Info("secret=" + secret.Name + "/" + secret.Namespace + " error:" + err.Error())
+				deleteFailed = true
+			}
 		}
-		err := a.client.Delete(ctx, secret)
-		if err != nil {
-			handlerLog.Info("secret=" + secret.Name + "/" + secret.Namespace + " error:" + err.Error())
-			return admission.Allowed("telegraf-injector coudn't delete secret")
+		if deleteFailed {
+			return admission.Allowed("telegraf-injector couldn't delete one or more secrets")
 		}
+
 		return admission.Allowed("telegraf-injector doesn't block pod deletions")
 	}
 
@@ -88,38 +96,42 @@ func (a *podInjector) Handle(ctx context.Context, req admission.Request) admissi
 		handlerLog.Info("name: " + name + ",  pod_getname=" + pod.GetName())
 	}
 
-	classData, err := a.ClassDataHandler.getData(pod)
-	if err != nil {
-		a.Logger.Info(fmt.Sprintf("unable to find class data: %v ; not adding sidecar container", err))
-		return admission.Allowed("telegraf-operator could not create sidecar container")
-	}
-
-	telegrafConf, err := a.SidecarHandler.assembleConf(pod, classData)
-	if err != nil {
-		a.Logger.Info(fmt.Sprintf("unable to assemble telegraf configuration: %v", err))
-		return admission.Allowed("telegraf-operator could not create sidecar container")
-	}
-
 	a.Logger.Info("adding sidecar container")
 	// if the telegraf configuration could be created, add sidecar pod
-	secret, err := a.SidecarHandler.addSidecar(pod, pod.GetName(), req.Namespace, telegrafConf)
+	result, err := a.SidecarHandler.addSidecars(pod, pod.GetName(), req.Namespace)
 	if err != nil {
-		a.Logger.Error(err, "unable to add sidecar container")
+
+		if nonFatalErr, ok := err.(*nonFatalError); ok {
+			a.Logger.Info(
+				fmt.Sprintf(
+					"unable to add telegraf sidecar container(s): %v ; not adding sidecar container, but allowing creation: %s",
+					nonFatalErr.err,
+					nonFatalErr.message,
+				),
+			)
+			return admission.Allowed(nonFatalErr.message)
+		}
+
+		a.Logger.Info(fmt.Sprintf("unable to add telegraf sidecar container(s): %v ; reporting error", err))
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
 	if req.Operation == admv1.Create {
-		err = a.client.Create(ctx, secret)
-		if err != nil {
-			a.Logger.Error(err, "unable to create secret")
-			return admission.Errored(http.StatusBadRequest, err)
+		for _, secret := range result.secrets {
+			err = a.client.Create(ctx, secret)
+			if err != nil {
+				a.Logger.Error(err, "unable to create secret")
+				return admission.Errored(http.StatusBadRequest, err)
+			}
 		}
 	}
 	if req.Operation == admv1.Update {
-		err = a.client.Update(ctx, secret)
-		if err != nil {
-			a.Logger.Error(err, "unable to update secret")
-			return admission.Errored(http.StatusBadRequest, err)
+		for _, secret := range result.secrets {
+			err = a.client.Update(ctx, secret)
+			if err != nil {
+				a.Logger.Error(err, "unable to update secret")
+				return admission.Errored(http.StatusBadRequest, err)
+			}
 		}
 	}
 

@@ -548,6 +548,157 @@ func Test_podInjector_Handle(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "skip telegraf into container if istio annotation present, but option enabled",
+			req: admission.Request{
+				AdmissionRequest: admv1.AdmissionRequest{
+					Operation: admv1.Create,
+					Object: runtime.RawExtension{
+						Raw: []byte(`{
+								"apiVersion": "v1",
+								"kind": "Pod",
+								"metadata": {
+								  "name": "simple",
+								  "annotations": {
+									"sidecar.istio.io/inject": "true"
+								  }
+								},
+								"spec": {
+								  "containers": [
+									{
+									  "name": "busybox",
+									  "image": "busybox",
+									  "args": [
+										"sleep",
+										"1000000"
+									  ]
+									}
+								  ]
+								}
+							  }`),
+					},
+				},
+			},
+			fields: fields{
+				TelegrafDefaultClass: testTelegrafClass,
+			},
+			classes: map[string]string{testTelegrafClass: sampleClassData},
+			want: want{
+				Allowed: true,
+			},
+		},
+		{
+			name: "inject telegraf-istio into container if option enabled",
+			req: admission.Request{
+				AdmissionRequest: admv1.AdmissionRequest{
+					Operation: admv1.Create,
+					Object: runtime.RawExtension{
+						Raw: []byte(`{
+								"apiVersion": "v1",
+								"kind": "Pod",
+								"metadata": {
+								  "name": "simple",
+								  "annotations": {
+									"sidecar.istio.io/inject": "true"
+								  }
+								},
+								"spec": {
+								  "containers": [
+									{
+									  "name": "busybox",
+									  "image": "busybox",
+									  "args": [
+										"sleep",
+										"1000000"
+									  ]
+									}
+								  ]
+								}
+							  }`),
+					},
+				},
+			},
+			fields: fields{
+				TelegrafDefaultClass: testTelegrafClass,
+			},
+			handler: &sidecarHandler{
+				RequestsCPU:          defaultRequestsCPU,
+				RequestsMemory:       defaultRequestsMemory,
+				LimitsCPU:            defaultLimitsCPU,
+				LimitsMemory:         defaultLimitsMemory,
+				EnableIstioInjection: true,
+				IstioOutputClass:     testTelegrafClass,
+			},
+			classes: map[string]string{testTelegrafClass: sampleClassData},
+			want: want{
+				Allowed: true,
+				Patches: []string{
+					`{"op":"add","path":"/metadata/creationTimestamp"}`,
+					`{"op":"add","path":"/spec/containers/0/resources","value":{}}`,
+					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.13","name":"telegraf-istio","resources":{"limits":{"cpu":"500m","memory":"500Mi"},"requests":{"cpu":"50m","memory":"50Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-istio-config"}]}}`,
+					`{"op":"add","path":"/spec/volumes","value":[{"name":"telegraf-istio-config","secret":{"secretName":"telegraf-istio-config-simple"}}]}`,
+					`{"op":"add","path":"/status","value":{}}`,
+				},
+			},
+		},
+		{
+			name: "inject telegraf and telegraf-istio into container",
+			req: admission.Request{
+				AdmissionRequest: admv1.AdmissionRequest{
+					Operation: admv1.Create,
+					Object: runtime.RawExtension{
+						Raw: []byte(`{
+								"apiVersion": "v1",
+								"kind": "Pod",
+								"metadata": {
+								  "name": "simple",
+								  "annotations": {
+									"sidecar.istio.io/inject": "true",
+									"telegraf.influxdata.com/port": "8080",
+									"telegraf.influxdata.com/path": "/v1/metrics",
+									"telegraf.influxdata.com/interval": "5s"
+								  }
+								},
+								"spec": {
+								  "containers": [
+									{
+									  "name": "busybox",
+									  "image": "busybox",
+									  "args": [
+										"sleep",
+										"1000000"
+									  ]
+									}
+								  ]
+								}
+							  }`),
+					},
+				},
+			},
+			fields: fields{
+				TelegrafDefaultClass: testTelegrafClass,
+			},
+			handler: &sidecarHandler{
+				RequestsCPU:          defaultRequestsCPU,
+				RequestsMemory:       defaultRequestsMemory,
+				LimitsCPU:            defaultLimitsCPU,
+				LimitsMemory:         defaultLimitsMemory,
+				EnableIstioInjection: true,
+				IstioOutputClass:     testTelegrafClass,
+			},
+			classes: map[string]string{testTelegrafClass: sampleClassData},
+			want: want{
+				Allowed: true,
+				Patches: []string{
+					`{"op":"add","path":"/metadata/creationTimestamp"}`,
+					`{"op":"add","path":"/spec/containers/0/resources","value":{}}`,
+					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.13","name":"telegraf","resources":{"limits":{"cpu":"500m","memory":"500Mi"},"requests":{"cpu":"50m","memory":"50Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
+					`{"op":"add","path":"/spec/containers/2","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.13","name":"telegraf-istio","resources":{"limits":{"cpu":"500m","memory":"500Mi"},"requests":{"cpu":"50m","memory":"50Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-istio-config"}]}}`,
+					`{"op":"add","path":"/spec/volumes","value":[{"name":"telegraf-config","secret":{"secretName":"telegraf-config-simple"}},{"name":"telegraf-istio-config","secret":{"secretName":"telegraf-istio-config-simple"}}]}`,
+					`{"op":"add","path":"/status","value":{}}`,
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -582,8 +733,10 @@ func Test_podInjector_Handle(t *testing.T) {
 			testClassDataHandler := &classDataHandler{
 				Logger:                   logger,
 				TelegrafClassesDirectory: dir,
-				TelegrafDefaultClass:     tt.fields.TelegrafDefaultClass,
 			}
+
+			tt.handler.ClassDataHandler = testClassDataHandler
+			tt.handler.TelegrafDefaultClass = tt.fields.TelegrafDefaultClass
 
 			p := &podInjector{
 				client:           client,
@@ -591,6 +744,10 @@ func Test_podInjector_Handle(t *testing.T) {
 				Logger:           logger,
 				SidecarHandler:   tt.handler,
 				ClassDataHandler: testClassDataHandler,
+			}
+
+			if tt.want.Code == 0 {
+				tt.want.Code = http.StatusOK
 			}
 
 			resp := p.Handle(context.Background(), tt.req)

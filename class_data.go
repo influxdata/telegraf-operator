@@ -20,8 +20,6 @@ import (
 	"os"
 	"path/filepath"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/go-logr/logr"
 	"github.com/influxdata/toml"
 )
@@ -29,7 +27,6 @@ import (
 type classDataHandler struct {
 	Logger                   logr.Logger
 	TelegrafClassesDirectory string
-	TelegrafDefaultClass     string
 }
 
 func (c *classDataHandler) validateClassData() error {
@@ -75,12 +72,7 @@ func (c *classDataHandler) validateClassData() error {
 	return nil
 }
 
-func (c *classDataHandler) getData(pod *corev1.Pod) (string, error) {
-	className := c.TelegrafDefaultClass
-	if extClass, ok := pod.Annotations[TelegrafClass]; ok {
-		className = extClass
-	}
-
+func (c *classDataHandler) getData(className string) (string, error) {
 	data, err := ioutil.ReadFile(filepath.Join(c.TelegrafClassesDirectory, className))
 
 	if err != nil {

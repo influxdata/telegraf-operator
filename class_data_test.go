@@ -4,9 +4,6 @@ import (
 	"os"
 	"testing"
 
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	logrTesting "github.com/go-logr/logr/testing"
 )
 
@@ -24,7 +21,6 @@ func Test_classDataHandler_getData(t *testing.T) {
 		secretName string
 		className  string
 		namespace  string
-		pod        *corev1.Pod
 
 		want    string
 		wantErr bool
@@ -33,31 +29,18 @@ func Test_classDataHandler_getData(t *testing.T) {
 			name:      "data does not contain class name",
 			className: "unknown",
 			classes:   map[string]string{testTelegrafClass: sampleClassData},
-			pod:       &corev1.Pod{},
 			wantErr:   true,
 		},
 		{
 			name:      "returns secret data",
 			className: testTelegrafClass,
 			classes:   map[string]string{testTelegrafClass: sampleClassData},
-			pod:       &corev1.Pod{},
 			want:      sampleClassData,
-		},
-		{
-			name:    "returns secret data with annotation override",
-			classes: map[string]string{"name_override": sampleClassData},
-			pod: &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						TelegrafClass: "name_override",
-					},
-				},
-			},
-			want: sampleClassData,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
 			logger := &logrTesting.TestLogger{T: t}
 
 			dir := createTempClassesDirectory(t, tt.classes)
@@ -66,10 +49,9 @@ func Test_classDataHandler_getData(t *testing.T) {
 			testClassDataHandler := &classDataHandler{
 				Logger:                   logger,
 				TelegrafClassesDirectory: dir,
-				TelegrafDefaultClass:     tt.className,
 			}
 
-			got, err := testClassDataHandler.getData(tt.pod)
+			got, err := testClassDataHandler.getData(tt.className)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("classDataHandler.getData() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -81,7 +63,6 @@ func Test_classDataHandler_getData(t *testing.T) {
 	}
 }
 
-// TODO: test validateClassData
 func Test_classDataHandler_validateClassData(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -117,7 +98,6 @@ func Test_classDataHandler_validateClassData(t *testing.T) {
 			testClassDataHandler := &classDataHandler{
 				Logger:                   logger,
 				TelegrafClassesDirectory: dir,
-				TelegrafDefaultClass:     testTelegrafClass,
 			}
 
 			err := testClassDataHandler.validateClassData()
