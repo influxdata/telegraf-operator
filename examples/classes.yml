@@ -70,6 +70,6 @@ stringData:
   # example for gathering istio
   istio: |+
     [[inputs.prometheus]]
-      urls = ["http://127.0.0.1:15020/stats/prometheus"]
+      urls = ["http://127.0.0.1:15090/stats/prometheus"]
     [[outputs.influxdb]]
       urls = ["http://influxdb.influxdb:8086"]
