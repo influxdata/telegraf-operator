@@ -20,7 +20,7 @@ workflows:
             - build
           filters:
             tags:
-              only: /.*/
+              only: /v.*/
 
 jobs:
   build:
