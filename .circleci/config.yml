@@ -20,7 +20,9 @@ workflows:
             - build
           filters:
             tags:
-              only: /.*/
+              only: /^v.*/
+            branches:
+              ignore: /.*/
 
 jobs:
   build:
