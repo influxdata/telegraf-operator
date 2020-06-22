@@ -540,36 +540,14 @@ status: {}
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						IstioSidecarAnnotation: IstioSidecarAnnotationValueTrue,
+						IstioSidecarAnnotation: "dummy",
 					},
 				},
 			},
 			wantPod: `
 metadata:
   annotations:
-    sidecar.istio.io/inject: "true"
-  creationTimestamp: null
-spec:
-  containers: null
-status: {}
-`,
-			wantSecrets: []string{},
-		},
-		{
-			name: "does not add istio sidecar when sidecar annotation not set to true",
-			pod: &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						IstioSidecarAnnotation: "false",
-					},
-				},
-			},
-			enableIstioInjection: true,
-			istioOutputClass:     "default",
-			wantPod: `
-metadata:
-  annotations:
-    sidecar.istio.io/inject: "false"
+    sidecar.istio.io/status: dummy
   creationTimestamp: null
 spec:
   containers: null
@@ -582,7 +560,7 @@ status: {}
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						IstioSidecarAnnotation: "true",
+						IstioSidecarAnnotation: "dummy",
 					},
 				},
 			},
@@ -591,7 +569,7 @@ status: {}
 			wantPod: `
 metadata:
   annotations:
-    sidecar.istio.io/inject: "true"
+    sidecar.istio.io/status: dummy
   creationTimestamp: null
 spec:
   containers:
@@ -625,7 +603,7 @@ status: {}
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						IstioSidecarAnnotation: "true",
+						IstioSidecarAnnotation: "dummy",
 						TelegrafClass:          "default",
 					},
 				},
@@ -635,7 +613,7 @@ status: {}
 			wantPod: `
 metadata:
   annotations:
-    sidecar.istio.io/inject: "true"
+    sidecar.istio.io/status: dummy
     telegraf.influxdata.com/class: default
   creationTimestamp: null
 spec:

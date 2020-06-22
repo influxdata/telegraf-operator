@@ -560,7 +560,7 @@ func Test_podInjector_Handle(t *testing.T) {
 								"metadata": {
 								  "name": "simple",
 								  "annotations": {
-									"sidecar.istio.io/inject": "true"
+									"sidecar.istio.io/status": "dummy"
 								  }
 								},
 								"spec": {
@@ -599,7 +599,7 @@ func Test_podInjector_Handle(t *testing.T) {
 								"metadata": {
 								  "name": "simple",
 								  "annotations": {
-									"sidecar.istio.io/inject": "true"
+									"sidecar.istio.io/status": "dummy"
 								  }
 								},
 								"spec": {
@@ -653,7 +653,7 @@ func Test_podInjector_Handle(t *testing.T) {
 								"metadata": {
 								  "name": "simple",
 								  "annotations": {
-									"sidecar.istio.io/inject": "true",
+									"sidecar.istio.io/status": "dummy",
 									"telegraf.influxdata.com/port": "8080",
 									"telegraf.influxdata.com/path": "/v1/metrics",
 									"telegraf.influxdata.com/interval": "5s"

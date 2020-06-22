@@ -15,9 +15,7 @@ import (
 
 const (
 	// IstioSidecarAnnotation is the annotation used by istio sidecar handler
-	IstioSidecarAnnotation = "sidecar.istio.io/inject"
-	// IstioSidecarAnnotationValueTrue specifies expected value to add istio sidecar monitoring
-	IstioSidecarAnnotationValueTrue = "true"
+	IstioSidecarAnnotation = "sidecar.istio.io/status"
 
 	// TelegrafAnnotationCommon is the shared prefix for all annotations.
 	TelegrafAnnotationCommon = "telegraf.influxdata.com"
@@ -92,8 +90,8 @@ func (h *sidecarHandler) shouldAddIstioTelegrafSidecar(pod *corev1.Pod) bool {
 		return false
 	}
 
-	for key, value := range pod.GetAnnotations() {
-		if key == IstioSidecarAnnotation && value == IstioSidecarAnnotationValueTrue {
+	for key := range pod.GetAnnotations() {
+		if key == IstioSidecarAnnotation {
 			return true
 		}
 	}
