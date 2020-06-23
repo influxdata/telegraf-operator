@@ -216,7 +216,7 @@ func Test_podInjector_Handle(t *testing.T) {
 				Patches: []string{
 					`{"op":"add","path":"/metadata/creationTimestamp"}`,
 					`{"op":"add","path":"/spec/containers/0/resources","value":{}}`,
-					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.13","name":"telegraf","resources":{"limits":{"cpu":"500m","memory":"500Mi"},"requests":{"cpu":"50m","memory":"50Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
+					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.14","name":"telegraf","resources":{"limits":{"cpu":"200m","memory":"200Mi"},"requests":{"cpu":"10m","memory":"10Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
 					`{"op":"add","path":"/spec/volumes","value":[{"name":"telegraf-config","secret":{"secretName":"telegraf-config-simple"}}]}`,
 					`{"op":"add","path":"/status","value":{}}`,
 				},
@@ -271,7 +271,7 @@ func Test_podInjector_Handle(t *testing.T) {
 				Patches: []string{
 					`{"op":"add","path":"/metadata/creationTimestamp"}`,
 					`{"op":"add","path":"/spec/containers/0/resources","value":{}}`,
-					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.11","name":"telegraf","resources":{"limits":{"cpu":"500m","memory":"500Mi"},"requests":{"cpu":"50m","memory":"50Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
+					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.11","name":"telegraf","resources":{"limits":{"cpu":"200m","memory":"200Mi"},"requests":{"cpu":"10m","memory":"10Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
 					`{"op":"add","path":"/spec/volumes","value":[{"name":"telegraf-config","secret":{"secretName":"telegraf-config-simple"}}]}`,
 					`{"op":"add","path":"/status","value":{}}`,
 				},
@@ -320,7 +320,7 @@ func Test_podInjector_Handle(t *testing.T) {
 				Patches: []string{
 					`{"op":"add","path":"/metadata/creationTimestamp"}`,
 					`{"op":"add","path":"/spec/containers/0/resources","value":{}}`,
-					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.11","name":"telegraf","resources":{"limits":{"cpu":"500m","memory":"500Mi"},"requests":{"cpu":"50m","memory":"50Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
+					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.11","name":"telegraf","resources":{"limits":{"cpu":"200m","memory":"200Mi"},"requests":{"cpu":"10m","memory":"10Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
 					`{"op":"add","path":"/spec/volumes","value":[{"name":"telegraf-config","secret":{"secretName":"telegraf-config-simple"}}]}`,
 					`{"op":"add","path":"/status","value":{}}`,
 				},
@@ -376,7 +376,7 @@ func Test_podInjector_Handle(t *testing.T) {
 				Patches: []string{
 					`{"op":"add","path":"/metadata/creationTimestamp"}`,
 					`{"op":"add","path":"/spec/containers/0/resources","value":{}}`,
-					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.13","name":"telegraf","resources":{"limits":{"cpu":"500m","memory":"500Mi"},"requests":{"cpu":"50m","memory":"50Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
+					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.14","name":"telegraf","resources":{"limits":{"cpu":"200m","memory":"200Mi"},"requests":{"cpu":"10m","memory":"10Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
 					`{"op":"add","path":"/spec/volumes","value":[{"name":"telegraf-config","secret":{"secretName":"telegraf-config-simple"}}]}`,
 					`{"op":"add","path":"/status","value":{}}`,
 				},
@@ -442,7 +442,7 @@ func Test_podInjector_Handle(t *testing.T) {
 				Patches: []string{
 					`{"op":"add","path":"/metadata/creationTimestamp"}`,
 					`{"op":"add","path":"/spec/containers/0/resources","value":{}}`,
-					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.11","name":"telegraf","resources":{"limits":{"cpu":"500m","memory":"500Mi"},"requests":{"cpu":"50m","memory":"50Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
+					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.11","name":"telegraf","resources":{"limits":{"cpu":"200m","memory":"200Mi"},"requests":{"cpu":"10m","memory":"10Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
 					`{"op":"add","path":"/spec/volumes","value":[{"name":"telegraf-config","secret":{"secretName":"telegraf-config-simple"}}]}`,
 					`{"op":"add","path":"/status","value":{}}`,
 				},
@@ -491,7 +491,7 @@ func Test_podInjector_Handle(t *testing.T) {
 				Patches: []string{
 					`{"op":"add","path":"/metadata/creationTimestamp"}`,
 					`{"op":"add","path":"/spec/containers/0/resources","value":{}}`,
-					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.13","name":"telegraf","resources":{"limits":{"cpu":"500m","memory":"500Mi"},"requests":{"cpu":"10m","memory":"50Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
+					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.14","name":"telegraf","resources":{"limits":{"cpu":"200m","memory":"200Mi"},"requests":{"cpu":"10m","memory":"10Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
 					`{"op":"add","path":"/spec/volumes","value":[{"name":"telegraf-config","secret":{"secretName":"telegraf-config-simple"}}]}`,
 					`{"op":"add","path":"/status","value":{}}`,
 				},
@@ -542,7 +542,7 @@ func Test_podInjector_Handle(t *testing.T) {
 				Patches: []string{
 					`{"op":"add","path":"/metadata/creationTimestamp"}`,
 					`{"op":"add","path":"/spec/containers/0/resources","value":{}}`,
-					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.13","name":"telegraf","resources":{"limits":{"cpu":"750m","memory":"500Mi"},"requests":{"cpu":"50m","memory":"50Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
+					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.14","name":"telegraf","resources":{"limits":{"cpu":"750m","memory":"200Mi"},"requests":{"cpu":"10m","memory":"10Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
 					`{"op":"add","path":"/spec/volumes","value":[{"name":"telegraf-config","secret":{"secretName":"telegraf-config-simple"}}]}`,
 					`{"op":"add","path":"/status","value":{}}`,
 				},
@@ -635,7 +635,7 @@ func Test_podInjector_Handle(t *testing.T) {
 				Patches: []string{
 					`{"op":"add","path":"/metadata/creationTimestamp"}`,
 					`{"op":"add","path":"/spec/containers/0/resources","value":{}}`,
-					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.13","name":"telegraf-istio","resources":{"limits":{"cpu":"500m","memory":"500Mi"},"requests":{"cpu":"50m","memory":"50Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-istio-config"}]}}`,
+					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.14","name":"telegraf-istio","resources":{"limits":{"cpu":"200m","memory":"200Mi"},"requests":{"cpu":"10m","memory":"10Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-istio-config"}]}}`,
 					`{"op":"add","path":"/spec/volumes","value":[{"name":"telegraf-istio-config","secret":{"secretName":"telegraf-istio-config-simple"}}]}`,
 					`{"op":"add","path":"/status","value":{}}`,
 				},
@@ -692,8 +692,8 @@ func Test_podInjector_Handle(t *testing.T) {
 				Patches: []string{
 					`{"op":"add","path":"/metadata/creationTimestamp"}`,
 					`{"op":"add","path":"/spec/containers/0/resources","value":{}}`,
-					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.13","name":"telegraf","resources":{"limits":{"cpu":"500m","memory":"500Mi"},"requests":{"cpu":"50m","memory":"50Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
-					`{"op":"add","path":"/spec/containers/2","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.13","name":"telegraf-istio","resources":{"limits":{"cpu":"500m","memory":"500Mi"},"requests":{"cpu":"50m","memory":"50Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-istio-config"}]}}`,
+					`{"op":"add","path":"/spec/containers/1","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.14","name":"telegraf","resources":{"limits":{"cpu":"200m","memory":"200Mi"},"requests":{"cpu":"10m","memory":"10Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-config"}]}}`,
+					`{"op":"add","path":"/spec/containers/2","value":{"env":[{"name":"NODENAME","valueFrom":{"fieldRef":{"fieldPath":"spec.nodeName"}}}],"image":"docker.io/library/telegraf:1.14","name":"telegraf-istio","resources":{"limits":{"cpu":"200m","memory":"200Mi"},"requests":{"cpu":"10m","memory":"10Mi"}},"volumeMounts":[{"mountPath":"/etc/telegraf","name":"telegraf-istio-config"}]}}`,
 					`{"op":"add","path":"/spec/volumes","value":[{"name":"telegraf-config","secret":{"secretName":"telegraf-config-simple"}},{"name":"telegraf-istio-config","secret":{"secretName":"telegraf-istio-config-simple"}}]}`,
 					`{"op":"add","path":"/status","value":{}}`,
 				},
