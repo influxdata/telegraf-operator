@@ -323,15 +323,15 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.13
+    image: docker.io/library/telegraf:1.14
     name: telegraf
     resources:
       limits:
-        cpu: 500m
-        memory: 500Mi
+        cpu: 200m
+        memory: 200Mi
       requests:
-        cpu: 50m
-        memory: 50Mi
+        cpu: 10m
+        memory: 10Mi
     volumeMounts:
     - mountPath: /etc/telegraf
       name: telegraf-config
@@ -368,11 +368,11 @@ spec:
     name: telegraf
     resources:
       limits:
-        cpu: 500m
-        memory: 500Mi
+        cpu: 200m
+        memory: 200Mi
       requests:
-        cpu: 50m
-        memory: 50Mi
+        cpu: 10m
+        memory: 10Mi
     volumeMounts:
     - mountPath: /etc/telegraf
       name: telegraf-config
@@ -436,7 +436,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.13
+    image: docker.io/library/telegraf:1.14
     name: telegraf
     resources:
       limits:
@@ -479,15 +479,15 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.13
+    image: docker.io/library/telegraf:1.14
     name: telegraf
     resources:
       limits:
         cpu: 750m
-        memory: 500Mi
+        memory: 200Mi
       requests:
-        cpu: 50m
-        memory: 50Mi
+        cpu: 10m
+        memory: 10Mi
     volumeMounts:
     - mountPath: /etc/telegraf
       name: telegraf-config
@@ -522,15 +522,15 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.13
+    image: docker.io/library/telegraf:1.14
     name: telegraf
     resources:
       limits:
         cpu: 750m
-        memory: 500Mi
+        memory: 200Mi
       requests:
-        cpu: 50m
-        memory: 50Mi
+        cpu: 10m
+        memory: 10Mi
     volumeMounts:
     - mountPath: /etc/telegraf
       name: telegraf-config
@@ -616,15 +616,15 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.13
+    image: docker.io/library/telegraf:1.14
     name: telegraf-istio
     resources:
       limits:
-        cpu: 500m
-        memory: 500Mi
+        cpu: 200m
+        memory: 200Mi
       requests:
-        cpu: 50m
-        memory: 50Mi
+        cpu: 10m
+        memory: 10Mi
     volumeMounts:
     - mountPath: /etc/telegraf
       name: telegraf-istio-config
@@ -697,11 +697,11 @@ spec:
     name: telegraf-istio
     resources:
       limits:
-        cpu: 500m
-        memory: 500Mi
+        cpu: 200m
+        memory: 200Mi
       requests:
-        cpu: 50m
-        memory: 50Mi
+        cpu: 10m
+        memory: 10Mi
     volumeMounts:
     - mountPath: /etc/telegraf
       name: telegraf-istio-config
@@ -738,15 +738,15 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.13
+    image: docker.io/library/telegraf:1.14
     name: telegraf
     resources:
       limits:
-        cpu: 500m
-        memory: 500Mi
+        cpu: 200m
+        memory: 200Mi
       requests:
-        cpu: 50m
-        memory: 50Mi
+        cpu: 10m
+        memory: 10Mi
     volumeMounts:
     - mountPath: /etc/telegraf
       name: telegraf-config
@@ -755,15 +755,15 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.13
+    image: docker.io/library/telegraf:1.14
     name: telegraf-istio
     resources:
       limits:
-        cpu: 500m
-        memory: 500Mi
+        cpu: 200m
+        memory: 200Mi
       requests:
-        cpu: 50m
-        memory: 50Mi
+        cpu: 10m
+        memory: 10Mi
     volumeMounts:
     - mountPath: /etc/telegraf
       name: telegraf-istio-config
