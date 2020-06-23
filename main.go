@@ -38,11 +38,11 @@ var (
 )
 
 const (
-	defaultTelegrafImage  = "docker.io/library/telegraf:1.13"
-	defaultRequestsCPU    = "50m"
-	defaultRequestsMemory = "50Mi"
-	defaultLimitsCPU      = "500m"
-	defaultLimitsMemory   = "500Mi"
+	defaultTelegrafImage  = "docker.io/library/telegraf:1.14"
+	defaultRequestsCPU    = "10m"
+	defaultRequestsMemory = "10Mi"
+	defaultLimitsCPU      = "200m"
+	defaultLimitsMemory   = "200Mi"
 )
 
 func init() {
