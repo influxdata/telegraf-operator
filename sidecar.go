@@ -14,6 +14,13 @@ import (
 )
 
 const (
+	istioInputsConf = `
+  [[inputs.prometheus]]
+    urls = ["http://127.0.0.1:15090/stats/prometheus"]
+`
+)
+
+const (
 	// IstioSidecarAnnotation is the annotation used by istio sidecar handler
 	IstioSidecarAnnotation = "sidecar.istio.io/status"
 
@@ -63,6 +70,7 @@ type sidecarHandler struct {
 	LimitsMemory                string
 	EnableIstioInjection        bool
 	IstioOutputClass            string
+	IstioTelegrafImage          string
 }
 
 type sidecarHandlerResponse struct {
@@ -76,6 +84,10 @@ func (h *sidecarHandler) skip(pod *corev1.Pod) bool {
 }
 
 func (h *sidecarHandler) shouldAddTelegrafSidecar(pod *corev1.Pod) bool {
+	if podHasContainerName(pod, "telegraf") {
+		return false
+	}
+
 	for key := range pod.GetAnnotations() {
 		if strings.Contains(key, TelegrafAnnotationCommon) {
 			return true
@@ -86,6 +98,10 @@ func (h *sidecarHandler) shouldAddTelegrafSidecar(pod *corev1.Pod) bool {
 }
 
 func (h *sidecarHandler) shouldAddIstioTelegrafSidecar(pod *corev1.Pod) bool {
+	if podHasContainerName(pod, "telegraf-istio") {
+		return false
+	}
+
 	if !h.EnableIstioInjection {
 		return false
 	}
@@ -147,20 +163,12 @@ func (h *sidecarHandler) addTelegrafSidecar(result *sidecarHandlerResponse, pod 
 		className = extClass
 	}
 
-	return h.addGenericTelegrafSidecar(result, pod, name, namespace, containerName, className, true)
-}
-
-func (h *sidecarHandler) addIstioTelegrafSidecar(result *sidecarHandlerResponse, pod *corev1.Pod, name, namespace string) error {
-	return h.addGenericTelegrafSidecar(result, pod, name, namespace, "telegraf-istio", h.IstioOutputClass, false)
-}
-
-func (h *sidecarHandler) addGenericTelegrafSidecar(result *sidecarHandlerResponse, pod *corev1.Pod, name, namespace, containerName, className string, addInputs bool) error {
 	classData, err := h.ClassDataHandler.getData(className)
 	if err != nil {
 		return newNonFatalError(err, "telegraf-operator could not create sidecar container for unknown class")
 	}
 
-	telegrafConf, err := h.assembleConf(pod, classData, addInputs)
+	telegrafConf, err := h.assembleConf(pod, classData)
 	if err != nil {
 		return newNonFatalError(err, "telegraf-operator could not create sidecar container due to error in class data")
 	}
@@ -170,9 +178,29 @@ func (h *sidecarHandler) addGenericTelegrafSidecar(result *sidecarHandlerRespons
 		return err
 	}
 
+	return h.addContainerAndSecret(result, pod, container, name, namespace, telegrafConf)
+}
+
+func (h *sidecarHandler) addIstioTelegrafSidecar(result *sidecarHandlerResponse, pod *corev1.Pod, name, namespace string) error {
+	classData, err := h.ClassDataHandler.getData(h.IstioOutputClass)
+	if err != nil {
+		return newNonFatalError(err, "telegraf-operator could not create sidecar container for istio class")
+	}
+
+	telegrafConf := fmt.Sprintf("%s\n\n%s", istioInputsConf, classData)
+
+	container, err := h.newIstioContainer(pod, "telegraf-istio")
+	if err != nil {
+		return err
+	}
+
+	return h.addContainerAndSecret(result, pod, container, name, namespace, telegrafConf)
+}
+
+func (h *sidecarHandler) addContainerAndSecret(result *sidecarHandlerResponse, pod *corev1.Pod, container corev1.Container, name, namespace, telegrafConf string) error {
 	pod.Spec.Containers = append(pod.Spec.Containers, container)
-	pod.Spec.Volumes = append(pod.Spec.Volumes, h.newVolume(name, containerName))
-	secret, err := h.newSecret(pod, name, namespace, containerName, telegrafConf)
+	pod.Spec.Volumes = append(pod.Spec.Volumes, h.newVolume(name, container.Name))
+	secret, err := h.newSecret(pod, name, namespace, container.Name, telegrafConf)
 	if err != nil {
 		return err
 	}
@@ -182,11 +210,7 @@ func (h *sidecarHandler) addGenericTelegrafSidecar(result *sidecarHandlerRespons
 }
 
 // Assembling telegraf configuration
-func (h *sidecarHandler) assembleConf(pod *corev1.Pod, classData string, addInputs bool) (telegrafConf string, err error) {
-	if !addInputs {
-		return classData, nil
-	}
-
+func (h *sidecarHandler) assembleConf(pod *corev1.Pod, classData string) (telegrafConf string, err error) {
 	ports := ports(pod)
 	if len(ports) != 0 {
 		path := "/metrics"
@@ -373,6 +397,67 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 	return baseContainer, nil
 }
 
+func (h *sidecarHandler) newIstioContainer(pod *corev1.Pod, containerName string) (corev1.Container, error) {
+	var parsedRequestsCPU resource.Quantity
+	var parsedRequestsMemory resource.Quantity
+	var parsedLimitsCPU resource.Quantity
+	var parsedLimitsMemory resource.Quantity
+	var err error
+
+	if parsedRequestsCPU, err = resource.ParseQuantity(h.RequestsCPU); err != nil {
+		return corev1.Container{}, err
+	}
+	if parsedRequestsMemory, err = resource.ParseQuantity(h.RequestsMemory); err != nil {
+		return corev1.Container{}, err
+	}
+
+	if parsedLimitsCPU, err = resource.ParseQuantity(h.LimitsCPU); err != nil {
+		return corev1.Container{}, err
+	}
+	if parsedLimitsMemory, err = resource.ParseQuantity(h.LimitsMemory); err != nil {
+		return corev1.Container{}, err
+	}
+
+	telegrafImage := h.IstioTelegrafImage
+	if telegrafImage == "" {
+		telegrafImage = h.TelegrafImage
+	}
+
+	baseContainer := corev1.Container{
+		Name:  containerName,
+		Image: telegrafImage,
+		Resources: corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				"cpu":    parsedLimitsCPU,
+				"memory": parsedLimitsMemory,
+			},
+			Requests: corev1.ResourceList{
+				"cpu":    parsedRequestsCPU,
+				"memory": parsedRequestsMemory,
+			},
+		},
+		Env: []corev1.EnvVar{
+			{
+				Name: "NODENAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "spec.nodeName",
+					},
+				},
+			},
+		},
+
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      fmt.Sprintf("%s-config", containerName),
+				MountPath: "/etc/telegraf",
+			},
+		},
+	}
+
+	return baseContainer, nil
+}
+
 // ports gathers and merges unique ports from both TelegrafMetricsPort and TelegrafMetricsPorts.
 func ports(pod *corev1.Pod) []string {
 	uniquePorts := map[string]struct{}{}
@@ -394,4 +479,13 @@ func ports(pod *corev1.Pod) []string {
 	}
 	sort.Strings(ps)
 	return ps
+}
+
+func podHasContainerName(pod *corev1.Pod, name string) bool {
+	for _, container := range pod.Spec.Containers {
+		if container.Name == name {
+			return true
+		}
+	}
+	return false
 }

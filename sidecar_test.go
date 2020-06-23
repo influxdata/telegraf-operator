@@ -34,7 +34,13 @@ metadata:
   name: telegraf-istio-config-myname
   namespace: mynamespace
 stringData:
-  telegraf.conf: '# istio'
+  telegraf.conf: |2-
+
+      [[inputs.prometheus]]
+        urls = ["http://127.0.0.1:15090/stats/prometheus"]
+
+
+    # istio outputs
 type: Opaque`
 )
 
@@ -251,7 +257,7 @@ func Test_assembleConf(t *testing.T) {
 				LimitsMemory:                defaultLimitsMemory,
 				Logger:                      &logrTesting.TestLogger{T: t},
 			}
-			gotConfig, err := handler.assembleConf(tt.pod, tt.classData, true)
+			gotConfig, err := handler.assembleConf(tt.pod, tt.classData)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("assembleConf() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -269,6 +275,7 @@ func Test_addSidecars(t *testing.T) {
 		pod                         *corev1.Pod
 		enableDefaultInternalPlugin bool
 		enableIstioInjection        bool
+		istioTelegrafImage          string
 		istioOutputClass            string
 		wantSecrets                 []string
 		wantPod                     string
@@ -536,6 +543,37 @@ status: {}
 			wantSecrets: []string{testEmptySecret},
 		},
 		{
+			name: "does not add telegraf sidecar when container already exists",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafClass: "default",
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						corev1.Container{
+							Name:  "telegraf",
+							Image: "alpine:latest",
+						},
+					},
+				},
+			},
+			wantPod: `
+metadata:
+  annotations:
+    telegraf.influxdata.com/class: default
+  creationTimestamp: null
+spec:
+  containers:
+  - image: alpine:latest
+    name: telegraf
+    resources: {}
+status: {}
+`,
+			wantSecrets: []string{},
+		},
+		{
 			name: "does not add istio sidecar when not enabled",
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
@@ -579,6 +617,83 @@ spec:
         fieldRef:
           fieldPath: spec.nodeName
     image: docker.io/library/telegraf:1.13
+    name: telegraf-istio
+    resources:
+      limits:
+        cpu: 500m
+        memory: 500Mi
+      requests:
+        cpu: 50m
+        memory: 50Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-istio-config
+  volumes:
+  - name: telegraf-istio-config
+    secret:
+      secretName: telegraf-istio-config-myname
+status: {}
+`,
+			wantSecrets: []string{testEmptyIstioSecret},
+		},
+		{
+			name: "does not add istio sidecar when container already exists",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						IstioSidecarAnnotation: "dummy",
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						corev1.Container{
+							Name:  "telegraf-istio",
+							Image: "alpine:latest",
+						},
+					},
+				},
+			},
+			enableIstioInjection: true,
+			istioOutputClass:     "istio",
+			wantPod: `
+metadata:
+  annotations:
+    sidecar.istio.io/status: dummy
+  creationTimestamp: null
+spec:
+  containers:
+  - image: alpine:latest
+    name: telegraf-istio
+    resources: {}
+status: {}
+`,
+			wantSecrets: []string{},
+		},
+		{
+			name: "adds istio sidecar when sidecar annotation enabled and istio injection enabled",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						IstioSidecarAnnotation: "dummy",
+					},
+				},
+			},
+			enableIstioInjection: true,
+			istioTelegrafImage:   "docker.io/library/telegraf:1.11",
+			istioOutputClass:     "istio",
+			wantPod: `
+metadata:
+  annotations:
+    sidecar.istio.io/status: dummy
+  creationTimestamp: null
+spec:
+  containers:
+  - env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    image: docker.io/library/telegraf:1.11
     name: telegraf-istio
     resources:
       limits:
@@ -669,7 +784,7 @@ status: {}
 		t.Run(tt.name, func(t *testing.T) {
 			dir := createTempClassesDirectory(t, map[string]string{
 				"default": "",
-				"istio":   "# istio",
+				"istio":   "# istio outputs",
 			})
 			defer os.RemoveAll(dir)
 
@@ -687,6 +802,7 @@ status: {}
 				EnableDefaultInternalPlugin: tt.enableDefaultInternalPlugin,
 				EnableIstioInjection:        tt.enableIstioInjection,
 				IstioOutputClass:            tt.istioOutputClass,
+				IstioTelegrafImage:          tt.istioTelegrafImage,
 				RequestsCPU:                 defaultRequestsCPU,
 				RequestsMemory:              defaultRequestsMemory,
 				LimitsCPU:                   defaultLimitsCPU,

@@ -62,6 +62,7 @@ webhooks:
         apiVersions: ["*"]
         resources: ["pods"]
     failurePolicy: Ignore
+    reinvocationPolicy: IfNeeded
 ---
 apiVersion: apps/v1
 kind: Deployment

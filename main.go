@@ -64,6 +64,7 @@ func main() {
 	var telegrafLimitsMemory string
 	var enableIstioInjection bool
 	var istioOutputClass string
+	var istioTelegrafImage string
 
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
@@ -80,6 +81,7 @@ func main() {
 	flag.BoolVar(&enableIstioInjection, "enable-istio-injection", false,
 		"Enable injecting additional sidecar for monitoring istio sidecar container. If enabled, additional sidecar telegraf-istio will be added for pods with the Istio annotation enabled")
 	flag.StringVar(&istioOutputClass, "istio-output-class", "istio", "Class to use for adding telegraf-istio sidecar to monitor its sidecar")
+	flag.StringVar(&istioTelegrafImage, "istio-telegraf-image", "", "If specified, use a custom image for telegraf-istio sidecar")
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(func(o *zap.Options) {
@@ -127,6 +129,7 @@ func main() {
 		EnableDefaultInternalPlugin: enableDefaultInternalPlugin,
 		EnableIstioInjection:        enableIstioInjection,
 		IstioOutputClass:            istioOutputClass,
+		IstioTelegrafImage:          istioTelegrafImage,
 		RequestsCPU:                 telegrafRequestsCPU,
 		RequestsMemory:              telegrafRequestsMemory,
 		LimitsCPU:                   telegrafLimitsCPU,
