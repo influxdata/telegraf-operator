@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-with-istio
+  namespace: test
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx-with-istio
+  template:
+    metadata:
+      labels:
+        app: nginx-with-istio
+      annotations:
+        # this will cause istio to inject its sidecar, that telegraf will then monitor
+        sidecar.istio.io/inject: "true"
+        # inject the status of the istio sidecar to mimic istio being present
+        sidecar.istio.io/status: "dummy"
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine

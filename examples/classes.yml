@@ -67,3 +67,7 @@ stringData:
       metric_batch_size = 100000
       metric_buffer_limit = 100000
       collection_jitter = "0s"
+  # example for gathering istio
+  istio: |+
+    [[outputs.influxdb]]
+      urls = ["http://influxdb.influxdb:8086"]

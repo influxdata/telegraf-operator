@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -11,6 +12,36 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	encode "k8s.io/apimachinery/pkg/runtime/serializer/json"
+)
+
+var (
+	testEmptySecret = `
+apiVersion: v1
+kind: Secret
+metadata:
+  creationTimestamp: null
+  name: telegraf-config-myname
+  namespace: mynamespace
+stringData:
+  telegraf.conf: |2+
+
+type: Opaque`
+	testEmptyIstioSecret = `
+apiVersion: v1
+kind: Secret
+metadata:
+  creationTimestamp: null
+  name: telegraf-istio-config-myname
+  namespace: mynamespace
+stringData:
+  telegraf.conf: |2-
+
+      [[inputs.prometheus]]
+        urls = ["http://127.0.0.1:15090/stats/prometheus"]
+
+
+    # istio outputs
+type: Opaque`
 )
 
 func Test_skip(t *testing.T) {
@@ -205,7 +236,9 @@ func Test_assembleConf(t *testing.T) {
 			enableDefaultInternalPlugin: true,
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{},
+					Annotations: map[string]string{
+						TelegrafClass: "default",
+					},
 				},
 			},
 			wantConfig: `
@@ -236,12 +269,15 @@ func Test_assembleConf(t *testing.T) {
 	}
 }
 
-func Test_addSidecar(t *testing.T) {
+func Test_addSidecars(t *testing.T) {
 	tests := []struct {
 		name                        string
 		pod                         *corev1.Pod
 		enableDefaultInternalPlugin bool
-		wantSecret                  string
+		enableIstioInjection        bool
+		istioTelegrafImage          string
+		istioOutputClass            string
+		wantSecrets                 []string
 		wantPod                     string
 	}{
 		{
@@ -253,7 +289,8 @@ func Test_addSidecar(t *testing.T) {
 					},
 				},
 			},
-			wantSecret: `apiVersion: v1
+			wantSecrets: []string{
+				`apiVersion: v1
 kind: Secret
 metadata:
   creationTimestamp: null
@@ -263,16 +300,21 @@ stringData:
   telegraf.conf: "\n[[inputs.prometheus]]\n  urls = [\"http://127.0.0.1:6060/metrics\"]\n
     \ \n\n"
 type: Opaque`,
+			},
 		},
 		{
 			name: "validate default telegraf pod definition",
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{},
+					Annotations: map[string]string{
+						TelegrafClass: "default",
+					},
 				},
 			},
 			wantPod: `
 metadata:
+  annotations:
+    telegraf.influxdata.com/class: default
   creationTimestamp: null
 spec:
   containers:
@@ -299,6 +341,7 @@ spec:
       secretName: telegraf-config-myname
 status: {}
 			`,
+			wantSecrets: []string{testEmptySecret},
 		},
 		{
 			name: "validate custom telegraf image pod definition",
@@ -339,14 +382,20 @@ spec:
       secretName: telegraf-config-myname
 status: {}
 			`,
+			wantSecrets: []string{testEmptySecret},
 		},
 		{
 			name: "validate enable default internal plugin",
 			pod: &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafClass: "default",
+					},
+				},
 			},
 			enableDefaultInternalPlugin: true,
-			wantSecret: `apiVersion: v1
+			wantSecrets: []string{
+				`apiVersion: v1
 kind: Secret
 metadata:
   creationTimestamp: null
@@ -358,6 +407,7 @@ stringData:
     [[inputs.internal]]
 
 type: Opaque`,
+			},
 		},
 		{
 			name: "validate custom resources and limits",
@@ -404,6 +454,7 @@ spec:
       secretName: telegraf-config-myname
 status: {}
 			`,
+			wantSecrets: []string{testEmptySecret},
 		},
 		{
 			name: "validate incorrect resources to fallback default resources",
@@ -446,32 +497,330 @@ spec:
       secretName: telegraf-config-myname
 status: {}
 `,
+			wantSecrets: []string{testEmptySecret},
+		},
+		{
+			name: "validate incorrect resources to fallback default resources",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafRequestsCPU: "100x",
+						TelegrafLimitsCPU:   "750m",
+					},
+				},
+			},
+			wantPod: `
+metadata:
+  annotations:
+    telegraf.influxdata.com/limits-cpu: 750m
+    telegraf.influxdata.com/requests-cpu: 100x
+  creationTimestamp: null
+spec:
+  containers:
+  - env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    image: docker.io/library/telegraf:1.13
+    name: telegraf
+    resources:
+      limits:
+        cpu: 750m
+        memory: 500Mi
+      requests:
+        cpu: 50m
+        memory: 50Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-config
+  volumes:
+  - name: telegraf-config
+    secret:
+      secretName: telegraf-config-myname
+status: {}
+`,
+			wantSecrets: []string{testEmptySecret},
+		},
+		{
+			name: "does not add telegraf sidecar when container already exists",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafClass: "default",
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						corev1.Container{
+							Name:  "telegraf",
+							Image: "alpine:latest",
+						},
+					},
+				},
+			},
+			wantPod: `
+metadata:
+  annotations:
+    telegraf.influxdata.com/class: default
+  creationTimestamp: null
+spec:
+  containers:
+  - image: alpine:latest
+    name: telegraf
+    resources: {}
+status: {}
+`,
+			wantSecrets: []string{},
+		},
+		{
+			name: "does not add istio sidecar when not enabled",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						IstioSidecarAnnotation: "dummy",
+					},
+				},
+			},
+			wantPod: `
+metadata:
+  annotations:
+    sidecar.istio.io/status: dummy
+  creationTimestamp: null
+spec:
+  containers: null
+status: {}
+`,
+			wantSecrets: []string{},
+		},
+		{
+			name: "adds istio sidecar when sidecar annotation enabled and istio injection enabled",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						IstioSidecarAnnotation: "dummy",
+					},
+				},
+			},
+			enableIstioInjection: true,
+			istioOutputClass:     "istio",
+			wantPod: `
+metadata:
+  annotations:
+    sidecar.istio.io/status: dummy
+  creationTimestamp: null
+spec:
+  containers:
+  - env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    image: docker.io/library/telegraf:1.13
+    name: telegraf-istio
+    resources:
+      limits:
+        cpu: 500m
+        memory: 500Mi
+      requests:
+        cpu: 50m
+        memory: 50Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-istio-config
+  volumes:
+  - name: telegraf-istio-config
+    secret:
+      secretName: telegraf-istio-config-myname
+status: {}
+`,
+			wantSecrets: []string{testEmptyIstioSecret},
+		},
+		{
+			name: "does not add istio sidecar when container already exists",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						IstioSidecarAnnotation: "dummy",
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						corev1.Container{
+							Name:  "telegraf-istio",
+							Image: "alpine:latest",
+						},
+					},
+				},
+			},
+			enableIstioInjection: true,
+			istioOutputClass:     "istio",
+			wantPod: `
+metadata:
+  annotations:
+    sidecar.istio.io/status: dummy
+  creationTimestamp: null
+spec:
+  containers:
+  - image: alpine:latest
+    name: telegraf-istio
+    resources: {}
+status: {}
+`,
+			wantSecrets: []string{},
+		},
+		{
+			name: "adds istio sidecar when sidecar annotation enabled and istio injection enabled",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						IstioSidecarAnnotation: "dummy",
+					},
+				},
+			},
+			enableIstioInjection: true,
+			istioTelegrafImage:   "docker.io/library/telegraf:1.11",
+			istioOutputClass:     "istio",
+			wantPod: `
+metadata:
+  annotations:
+    sidecar.istio.io/status: dummy
+  creationTimestamp: null
+spec:
+  containers:
+  - env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    image: docker.io/library/telegraf:1.11
+    name: telegraf-istio
+    resources:
+      limits:
+        cpu: 500m
+        memory: 500Mi
+      requests:
+        cpu: 50m
+        memory: 50Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-istio-config
+  volumes:
+  - name: telegraf-istio-config
+    secret:
+      secretName: telegraf-istio-config-myname
+status: {}
+`,
+			wantSecrets: []string{testEmptyIstioSecret},
+		},
+		{
+			name: "adds both regular telegraf and istio sidecars when sidecar annotation enabled and istio injection enabled",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						IstioSidecarAnnotation: "dummy",
+						TelegrafClass:          "default",
+					},
+				},
+			},
+			enableIstioInjection: true,
+			istioOutputClass:     "istio",
+			wantPod: `
+metadata:
+  annotations:
+    sidecar.istio.io/status: dummy
+    telegraf.influxdata.com/class: default
+  creationTimestamp: null
+spec:
+  containers:
+  - env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    image: docker.io/library/telegraf:1.13
+    name: telegraf
+    resources:
+      limits:
+        cpu: 500m
+        memory: 500Mi
+      requests:
+        cpu: 50m
+        memory: 50Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-config
+  - env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    image: docker.io/library/telegraf:1.13
+    name: telegraf-istio
+    resources:
+      limits:
+        cpu: 500m
+        memory: 500Mi
+      requests:
+        cpu: 50m
+        memory: 50Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-istio-config
+  volumes:
+  - name: telegraf-config
+    secret:
+      secretName: telegraf-config-myname
+  - name: telegraf-istio-config
+    secret:
+      secretName: telegraf-istio-config-myname
+status: {}
+`,
+			wantSecrets: []string{testEmptySecret, testEmptyIstioSecret},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			dir := createTempClassesDirectory(t, map[string]string{
+				"default": "",
+				"istio":   "# istio outputs",
+			})
+			defer os.RemoveAll(dir)
+
+			logger := &logrTesting.TestLogger{T: t}
+
+			testClassDataHandler := &classDataHandler{
+				Logger:                   logger,
+				TelegrafClassesDirectory: dir,
+			}
+
 			handler := &sidecarHandler{
+				ClassDataHandler:            testClassDataHandler,
+				TelegrafDefaultClass:        "default",
 				TelegrafImage:               defaultTelegrafImage,
 				EnableDefaultInternalPlugin: tt.enableDefaultInternalPlugin,
+				EnableIstioInjection:        tt.enableIstioInjection,
+				IstioOutputClass:            tt.istioOutputClass,
+				IstioTelegrafImage:          tt.istioTelegrafImage,
 				RequestsCPU:                 defaultRequestsCPU,
 				RequestsMemory:              defaultRequestsMemory,
 				LimitsCPU:                   defaultLimitsCPU,
 				LimitsMemory:                defaultLimitsMemory,
 				Logger:                      &logrTesting.TestLogger{T: t},
 			}
-			telegrafConf, err := handler.assembleConf(tt.pod, "")
-			if err != nil {
-				t.Errorf("unexpected error assembling sidecar configuration: %v", err)
-			}
-			secret, err := handler.addSidecar(tt.pod, "myname", "mynamespace", telegrafConf)
+
+			result, err := handler.addSidecars(tt.pod, "myname", "mynamespace")
 			if err != nil {
 				t.Errorf("unexpected error adding to sidecar: %v", err)
 			}
 
-			if tt.wantSecret != "" {
-				if want, got := strings.TrimSpace(tt.wantSecret), strings.TrimSpace(toYAML(t, secret)); got != want {
-					t.Errorf("unexpected secret got:\n%v\nwant:\n%v", got, want)
+			if want, got := len(tt.wantSecrets), len(result.secrets); got != want {
+				t.Errorf("invalid number of secrets returned got: %d; want: %d", got, want)
+			}
+			for i := 0; i < len(result.secrets); i++ {
+				if want, got := strings.TrimSpace(tt.wantSecrets[i]), strings.TrimSpace(toYAML(t, result.secrets[i])); got != want {
+					t.Errorf("unexpected secret %d got:\n%v\nwant:\n%v", i, got, want)
 				}
 			}
 

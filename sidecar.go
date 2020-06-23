@@ -14,6 +14,16 @@ import (
 )
 
 const (
+	istioInputsConf = `
+  [[inputs.prometheus]]
+    urls = ["http://127.0.0.1:15090/stats/prometheus"]
+`
+)
+
+const (
+	// IstioSidecarAnnotation is the annotation used by istio sidecar handler
+	IstioSidecarAnnotation = "sidecar.istio.io/status"
+
 	// TelegrafAnnotationCommon is the shared prefix for all annotations.
 	TelegrafAnnotationCommon = "telegraf.influxdata.com"
 	// TelegrafMetricsPort is used to configure a port telegraf should scrape;
@@ -45,27 +55,64 @@ const (
 	TelegrafLimitsCPU = "telegraf.influxdata.com/limits-cpu"
 	// TelegrafLimitsMemory allows specifying custom memory resource limits
 	TelegrafLimitsMemory = "telegraf.influxdata.com/limits-memory"
-	telegrafSecretPrefix = "telegraf-config"
+	telegrafSecretInfix  = "config"
 )
 
 type sidecarHandler struct {
+	ClassDataHandler            *classDataHandler
 	Logger                      logr.Logger
+	TelegrafDefaultClass        string
 	TelegrafImage               string
 	EnableDefaultInternalPlugin bool
 	RequestsCPU                 string
 	RequestsMemory              string
 	LimitsCPU                   string
 	LimitsMemory                string
+	EnableIstioInjection        bool
+	IstioOutputClass            string
+	IstioTelegrafImage          string
+}
+
+type sidecarHandlerResponse struct {
+	// list of secrets to create alongside with the changes
+	secrets []*corev1.Secret
 }
 
 // This function check if the pod have the correct annotations, otherwise the controller will skip this pod entirely
 func (h *sidecarHandler) skip(pod *corev1.Pod) bool {
+	return !h.shouldAddTelegrafSidecar(pod) && !h.shouldAddIstioTelegrafSidecar(pod)
+}
+
+func (h *sidecarHandler) shouldAddTelegrafSidecar(pod *corev1.Pod) bool {
+	if podHasContainerName(pod, "telegraf") {
+		return false
+	}
+
 	for key := range pod.GetAnnotations() {
 		if strings.Contains(key, TelegrafAnnotationCommon) {
-			return false
+			return true
 		}
 	}
-	return true
+
+	return false
+}
+
+func (h *sidecarHandler) shouldAddIstioTelegrafSidecar(pod *corev1.Pod) bool {
+	if podHasContainerName(pod, "telegraf-istio") {
+		return false
+	}
+
+	if !h.EnableIstioInjection {
+		return false
+	}
+
+	for key := range pod.GetAnnotations() {
+		if key == IstioSidecarAnnotation {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (h *sidecarHandler) validateRequestsAndLimits() error {
@@ -85,14 +132,81 @@ func (h *sidecarHandler) validateRequestsAndLimits() error {
 	return nil
 }
 
-func (h *sidecarHandler) addSidecar(pod *corev1.Pod, name, namespace, telegrafConf string) (*corev1.Secret, error) {
-	container, err := h.newContainer(pod)
-	if err != nil {
-		return nil, err
+func (h *sidecarHandler) telegrafSecretNames(name string) []string {
+	return []string{
+		fmt.Sprintf("telegraf-%s-%s", telegrafSecretInfix, name),
+		fmt.Sprintf("telegraf-istio-%s-%s", telegrafSecretInfix, name),
 	}
+}
+
+func (h *sidecarHandler) addSidecars(pod *corev1.Pod, name, namespace string) (*sidecarHandlerResponse, error) {
+	result := &sidecarHandlerResponse{}
+	if h.shouldAddTelegrafSidecar(pod) {
+		err := h.addTelegrafSidecar(result, pod, name, namespace, "telegraf")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if h.shouldAddIstioTelegrafSidecar(pod) {
+		err := h.addIstioTelegrafSidecar(result, pod, name, namespace)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+func (h *sidecarHandler) addTelegrafSidecar(result *sidecarHandlerResponse, pod *corev1.Pod, name, namespace, containerName string) error {
+	className := h.TelegrafDefaultClass
+	if extClass, ok := pod.Annotations[TelegrafClass]; ok {
+		className = extClass
+	}
+
+	classData, err := h.ClassDataHandler.getData(className)
+	if err != nil {
+		return newNonFatalError(err, "telegraf-operator could not create sidecar container for unknown class")
+	}
+
+	telegrafConf, err := h.assembleConf(pod, classData)
+	if err != nil {
+		return newNonFatalError(err, "telegraf-operator could not create sidecar container due to error in class data")
+	}
+
+	container, err := h.newContainer(pod, containerName)
+	if err != nil {
+		return err
+	}
+
+	return h.addContainerAndSecret(result, pod, container, name, namespace, telegrafConf)
+}
+
+func (h *sidecarHandler) addIstioTelegrafSidecar(result *sidecarHandlerResponse, pod *corev1.Pod, name, namespace string) error {
+	classData, err := h.ClassDataHandler.getData(h.IstioOutputClass)
+	if err != nil {
+		return newNonFatalError(err, "telegraf-operator could not create sidecar container for istio class")
+	}
+
+	telegrafConf := fmt.Sprintf("%s\n\n%s", istioInputsConf, classData)
+
+	container, err := h.newIstioContainer(pod, "telegraf-istio")
+	if err != nil {
+		return err
+	}
+
+	return h.addContainerAndSecret(result, pod, container, name, namespace, telegrafConf)
+}
+
+func (h *sidecarHandler) addContainerAndSecret(result *sidecarHandlerResponse, pod *corev1.Pod, container corev1.Container, name, namespace, telegrafConf string) error {
 	pod.Spec.Containers = append(pod.Spec.Containers, container)
-	pod.Spec.Volumes = append(pod.Spec.Volumes, h.newVolume(name))
-	return h.newSecret(pod, name, namespace, telegrafConf)
+	pod.Spec.Volumes = append(pod.Spec.Volumes, h.newVolume(name, container.Name))
+	secret, err := h.newSecret(pod, name, namespace, container.Name, telegrafConf)
+	if err != nil {
+		return err
+	}
+	result.secrets = append(result.secrets, secret)
+
+	return nil
 }
 
 // Assembling telegraf configuration
@@ -145,14 +259,14 @@ func (h *sidecarHandler) assembleConf(pod *corev1.Pod, classData string) (telegr
 	return telegrafConf, err
 }
 
-func (h *sidecarHandler) newSecret(pod *corev1.Pod, name, namespace, telegrafConf string) (*corev1.Secret, error) {
+func (h *sidecarHandler) newSecret(pod *corev1.Pod, name, namespace, containerName, telegrafConf string) (*corev1.Secret, error) {
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", telegrafSecretPrefix, name),
+			Name:      fmt.Sprintf("%s-%s-%s", containerName, telegrafSecretInfix, name),
 			Namespace: namespace,
 		},
 		Type: "Opaque",
@@ -162,12 +276,12 @@ func (h *sidecarHandler) newSecret(pod *corev1.Pod, name, namespace, telegrafCon
 	}, nil
 }
 
-func (h *sidecarHandler) newVolume(name string) corev1.Volume {
+func (h *sidecarHandler) newVolume(name, containerName string) corev1.Volume {
 	return corev1.Volume{
-		Name: "telegraf-config",
+		Name: fmt.Sprintf("%s-config", containerName),
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
-				SecretName: fmt.Sprintf("%s-%s", telegrafSecretPrefix, name),
+				SecretName: fmt.Sprintf("%s-%s-%s", containerName, telegrafSecretInfix, name),
 			},
 		},
 	}
@@ -183,7 +297,7 @@ func (h *sidecarHandler) parseCustomOrDefaultQuantity(customQuantity string, def
 	return quantity, err
 }
 
-func (h *sidecarHandler) newContainer(pod *corev1.Pod) (corev1.Container, error) {
+func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (corev1.Container, error) {
 	var telegrafImage string
 	var telegrafRequestsCPU string
 	var telegrafRequestsMemory string
@@ -237,7 +351,7 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod) (corev1.Container, error)
 	}
 
 	baseContainer := corev1.Container{
-		Name:  "telegraf",
+		Name:  containerName,
 		Image: telegrafImage,
 		Resources: corev1.ResourceRequirements{
 			Limits: corev1.ResourceList{
@@ -262,7 +376,7 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod) (corev1.Container, error)
 
 		VolumeMounts: []corev1.VolumeMount{
 			{
-				Name:      "telegraf-config",
+				Name:      fmt.Sprintf("%s-config", containerName),
 				MountPath: "/etc/telegraf",
 			},
 		},
@@ -280,6 +394,67 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod) (corev1.Container, error)
 			},
 		}
 	}
+	return baseContainer, nil
+}
+
+func (h *sidecarHandler) newIstioContainer(pod *corev1.Pod, containerName string) (corev1.Container, error) {
+	var parsedRequestsCPU resource.Quantity
+	var parsedRequestsMemory resource.Quantity
+	var parsedLimitsCPU resource.Quantity
+	var parsedLimitsMemory resource.Quantity
+	var err error
+
+	if parsedRequestsCPU, err = resource.ParseQuantity(h.RequestsCPU); err != nil {
+		return corev1.Container{}, err
+	}
+	if parsedRequestsMemory, err = resource.ParseQuantity(h.RequestsMemory); err != nil {
+		return corev1.Container{}, err
+	}
+
+	if parsedLimitsCPU, err = resource.ParseQuantity(h.LimitsCPU); err != nil {
+		return corev1.Container{}, err
+	}
+	if parsedLimitsMemory, err = resource.ParseQuantity(h.LimitsMemory); err != nil {
+		return corev1.Container{}, err
+	}
+
+	telegrafImage := h.IstioTelegrafImage
+	if telegrafImage == "" {
+		telegrafImage = h.TelegrafImage
+	}
+
+	baseContainer := corev1.Container{
+		Name:  containerName,
+		Image: telegrafImage,
+		Resources: corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				"cpu":    parsedLimitsCPU,
+				"memory": parsedLimitsMemory,
+			},
+			Requests: corev1.ResourceList{
+				"cpu":    parsedRequestsCPU,
+				"memory": parsedRequestsMemory,
+			},
+		},
+		Env: []corev1.EnvVar{
+			{
+				Name: "NODENAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "spec.nodeName",
+					},
+				},
+			},
+		},
+
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      fmt.Sprintf("%s-config", containerName),
+				MountPath: "/etc/telegraf",
+			},
+		},
+	}
+
 	return baseContainer, nil
 }
 
@@ -304,4 +479,13 @@ func ports(pod *corev1.Pod) []string {
 	}
 	sort.Strings(ps)
 	return ps
+}
+
+func podHasContainerName(pod *corev1.Pod, name string) bool {
+	for _, container := range pod.Spec.Containers {
+		if container.Name == name {
+			return true
+		}
+	}
+	return false
 }
