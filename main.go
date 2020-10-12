@@ -65,12 +65,15 @@ func main() {
 	var enableIstioInjection bool
 	var istioOutputClass string
 	var istioTelegrafImage string
+	var requireAnnotationsForSecret bool
 
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 	flag.BoolVar(&enableDefaultInternalPlugin, "enable-default-internal-plugin", false,
 		"Enable internal plugin in telegraf for all sidecar. If disabled, can be set explicitly via appropriate annotation")
+	flag.BoolVar(&requireAnnotationsForSecret, "require-annotations-for-secret", false,
+		"Require the annotations to be present when updating a secret")
 	flag.StringVar(&telegrafClassesDirectory, "telegraf-classes-directory", "/config/classes", "The name of the directory in which the telegraf classes are configured")
 	flag.StringVar(&defaultTelegrafClass, "telegraf-default-class", "default", "Default telegraf class to use")
 	flag.StringVar(&telegrafImage, "telegraf-image", defaultTelegrafImage, "Telegraf image to inject")
@@ -143,9 +146,10 @@ func main() {
 	}
 
 	hookServer.Register("/mutate-v1-pod", &webhook.Admission{Handler: &podInjector{
-		Logger:           logger,
-		SidecarHandler:   sidecar,
-		ClassDataHandler: classData,
+		Logger:                      logger,
+		SidecarHandler:              sidecar,
+		ClassDataHandler:            classData,
+		RequireAnnotationsForSecret: requireAnnotationsForSecret,
 	}})
 
 	setupLog.Info("starting manager")

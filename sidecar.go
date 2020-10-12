@@ -56,6 +56,10 @@ const (
 	// TelegrafLimitsMemory allows specifying custom memory resource limits
 	TelegrafLimitsMemory = "telegraf.influxdata.com/limits-memory"
 	telegrafSecretInfix  = "config"
+
+	TelegrafSecretAnnotationKey   = "app.kubernetes.io/managed-by"
+	TelegrafSecretAnnotationValue = "telegraf-operator"
+	TelegrafSecretDataKey         = "telegraf.conf"
 )
 
 type sidecarHandler struct {
@@ -268,10 +272,13 @@ func (h *sidecarHandler) newSecret(pod *corev1.Pod, name, namespace, containerNa
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s-%s", containerName, telegrafSecretInfix, name),
 			Namespace: namespace,
+			Annotations: map[string]string{
+				TelegrafSecretAnnotationKey: TelegrafSecretAnnotationValue,
+			},
 		},
 		Type: "Opaque",
 		StringData: map[string]string{
-			"telegraf.conf": telegrafConf,
+			TelegrafSecretDataKey: telegrafConf,
 		},
 	}, nil
 }

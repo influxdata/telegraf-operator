@@ -367,7 +367,8 @@ func Test_podInjector_Handle(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "telegraf-config-simple",
 					},
-					Data: map[string][]byte{TelegrafClass: []byte(sampleClassData)},
+					Type: "Opaque",
+					Data: map[string][]byte{TelegrafSecretDataKey: []byte(sampleClassData)},
 				},
 			},
 			classes: map[string]string{testTelegrafClass: sampleClassData},
@@ -699,6 +700,114 @@ func Test_podInjector_Handle(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "refuse to update telegraf secret if data does not match expected pattern",
+			req: admission.Request{
+				AdmissionRequest: admv1.AdmissionRequest{
+					Operation: admv1.Update,
+					Object: runtime.RawExtension{
+						Raw: []byte(`{
+									"apiVersion": "v1",
+									"kind": "Pod",
+									"metadata": {
+										"name": "simple",
+									  "annotations": {
+										"telegraf.influxdata.com/port": "8080",
+										"telegraf.influxdata.com/path": "/v1/metrics",
+										"telegraf.influxdata.com/interval": "5s"
+									  }
+									},
+									"spec": {
+									  "containers": [
+										{
+										  "name": "busybox",
+										  "image": "busybox",
+										  "args": [
+											"sleep",
+											"1000000"
+										  ]
+										}
+									  ]
+									}
+								  }`),
+					},
+				},
+			},
+			fields: fields{
+				TelegrafDefaultClass: testTelegrafClass,
+			},
+			objects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "telegraf-config-simple",
+					},
+					Type: "Opaque",
+					Data: map[string][]byte{"invalid-key": []byte(sampleClassData)},
+				},
+			},
+			classes: map[string]string{testTelegrafClass: sampleClassData},
+			want: want{
+				Allowed: false,
+				Patches: []string{},
+				Code:    400,
+				// two spaces in error message as the namespace is an empty string
+				Message: "unable to update existing secret telegraf-config-simple in namespace  as it is not managed by telegraf-operator",
+			},
+		},
+		{
+			name: "refuse to update telegraf secret if type is not Opaque",
+			req: admission.Request{
+				AdmissionRequest: admv1.AdmissionRequest{
+					Operation: admv1.Update,
+					Object: runtime.RawExtension{
+						Raw: []byte(`{
+									"apiVersion": "v1",
+									"kind": "Pod",
+									"metadata": {
+										"name": "simple",
+									  "annotations": {
+										"telegraf.influxdata.com/port": "8080",
+										"telegraf.influxdata.com/path": "/v1/metrics",
+										"telegraf.influxdata.com/interval": "5s"
+									  }
+									},
+									"spec": {
+									  "containers": [
+										{
+										  "name": "busybox",
+										  "image": "busybox",
+										  "args": [
+											"sleep",
+											"1000000"
+										  ]
+										}
+									  ]
+									}
+								  }`),
+					},
+				},
+			},
+			fields: fields{
+				TelegrafDefaultClass: testTelegrafClass,
+			},
+			objects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "telegraf-config-simple",
+					},
+					Type: "Invalid",
+					Data: map[string][]byte{TelegrafSecretDataKey: []byte(sampleClassData)},
+				},
+			},
+			classes: map[string]string{testTelegrafClass: sampleClassData},
+			want: want{
+				Allowed: false,
+				Patches: []string{},
+				Code:    400,
+				// two spaces in error message as the namespace is an empty string
+				Message: "unable to update existing secret telegraf-config-simple in namespace  as it is not managed by telegraf-operator",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -784,6 +893,128 @@ func Test_podInjector_Handle(t *testing.T) {
 				if got, want := resp.Result.Message, tt.want.Message; got != want {
 					t.Errorf("podInjector.Handle().Message =\n%v, want\n%v", got, want)
 				}
+			}
+		})
+	}
+}
+
+func Test_isSecretManagedByTelegrafOperator(t *testing.T) {
+	testSecretData := map[string][]byte{
+		TelegrafSecretDataKey: []byte("test"),
+	}
+	tests := []struct {
+		name                        string
+		secret                      *corev1.Secret
+		requireAnnotationsForSecret bool
+		result                      bool
+	}{
+		{
+			name: "reports false when secret data does not match expected pattern",
+			secret: &corev1.Secret{
+				Data: map[string][]byte{
+					"invalid": []byte("test"),
+				},
+			},
+			result: false,
+		},
+		{
+			name: "reports false when secret if type is not Opaque",
+			secret: &corev1.Secret{
+				Type: "Invalid",
+				Data: testSecretData,
+			},
+			result: false,
+		},
+		{
+			name: "reports false when requireAnnotationsForSecret and annotations not present",
+			secret: &corev1.Secret{
+				Data: testSecretData,
+			},
+			requireAnnotationsForSecret: true,
+			result:                      false,
+		},
+		{
+			name: "reports false when requireAnnotationsForSecret and annotations not present",
+			secret: &corev1.Secret{
+				Data: testSecretData,
+			},
+			requireAnnotationsForSecret: true,
+			result:                      false,
+		},
+		{
+			name: "reports false when requireAnnotationsForSecret and annotations not present",
+			secret: &corev1.Secret{
+				Data: testSecretData,
+			},
+			requireAnnotationsForSecret: true,
+			result:                      false,
+		},
+		{
+			name: "reports false when requireAnnotationsForSecret and specific annotation not present",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+				Data: testSecretData,
+			},
+			requireAnnotationsForSecret: true,
+			result:                      false,
+		},
+		{
+			name: "reports false when requireAnnotationsForSecret and annotations value differs",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafSecretAnnotationKey: "somethingelse",
+					},
+				},
+				Data: testSecretData,
+			},
+			requireAnnotationsForSecret: true,
+			result:                      false,
+		},
+		{
+			name: "reports true whenall conditions match",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafSecretAnnotationKey: TelegrafSecretAnnotationValue,
+					},
+				},
+				Data: testSecretData,
+			},
+			requireAnnotationsForSecret: true,
+			result:                      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logger := &logrTesting.TestLogger{T: t}
+
+			p := &podInjector{
+				Logger:                      logger,
+				RequireAnnotationsForSecret: tt.requireAnnotationsForSecret,
+			}
+
+			if tt.secret.TypeMeta.APIVersion == "" {
+				tt.secret.TypeMeta.APIVersion = "v1"
+			}
+			if tt.secret.TypeMeta.Kind == "" {
+				tt.secret.TypeMeta.Kind = "Secret"
+			}
+			if tt.secret.ObjectMeta.Namespace == "" {
+				tt.secret.ObjectMeta.Namespace = "test"
+			}
+			if tt.secret.ObjectMeta.Name == "" {
+				tt.secret.ObjectMeta.Name = "test-secret"
+			}
+			if tt.secret.Type == "" {
+				tt.secret.Type = "Opaque"
+			}
+
+			if got, want := p.isSecretManagedByTelegrafOperator(tt.secret), tt.result; got != want {
+				t.Fatalf("invalid resul; got %v, want %v", got, want)
 			}
 		})
 	}
