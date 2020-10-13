@@ -147,13 +147,13 @@ func Test_assembleConf(t *testing.T) {
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						TelegrafMetricsPorts: "6060,9999",
+						TelegrafMetricsPorts: "6060,8086",
 					},
 				},
 			},
 			wantConfig: `
 [[inputs.prometheus]]
-  urls = ["http://127.0.0.1:6060/metrics", "http://127.0.0.1:9999/metrics"]
+  urls = ["http://127.0.0.1:6060/metrics", "http://127.0.0.1:8086/metrics"]
   
 
 `,
@@ -186,14 +186,14 @@ func Test_assembleConf(t *testing.T) {
 						TelegrafMetricsPath:    "/metrics/usage",
 						TelegrafMetricsScheme:  "https",
 						TelegrafInterval:       "10s",
-						TelegrafMetricsPorts:   "6060,9999",
+						TelegrafMetricsPorts:   "6060,8086",
 						TelegrafEnableInternal: "true",
 					},
 				},
 			},
 			wantConfig: `
 [[inputs.prometheus]]
-  urls = ["https://127.0.0.1:6060/metrics/usage", "https://127.0.0.1:9999/metrics/usage"]
+  urls = ["https://127.0.0.1:6060/metrics/usage", "https://127.0.0.1:8086/metrics/usage"]
   interval = "10s"
 
 [[inputs.internal]]
@@ -864,11 +864,11 @@ func Test_ports(t *testing.T) {
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						TelegrafMetricsPorts: "9999,6060,6060",
+						TelegrafMetricsPorts: "8086,6060,6060",
 					},
 				},
 			},
-			want: []string{"6060", "9999"},
+			want: []string{"6060", "8086"},
 		},
 		{
 			name: "single port from TelegrafMetricsPorts",
