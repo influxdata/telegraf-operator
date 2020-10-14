@@ -25,7 +25,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apiserver/pkg/storage/names"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -37,9 +39,10 @@ type podInjector struct {
 	client  client.Client
 	decoder *admission.Decoder
 	names.NameGenerator
-	Logger           logr.Logger
-	ClassDataHandler *classDataHandler
-	SidecarHandler   *sidecarHandler
+	Logger                      logr.Logger
+	ClassDataHandler            *classDataHandler
+	SidecarHandler              *sidecarHandler
+	RequireAnnotationsForSecret bool
 }
 
 // podInjector adds an annotation to every incoming pods.
@@ -116,22 +119,11 @@ func (a *podInjector) Handle(ctx context.Context, req admission.Request) admissi
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	if req.Operation == admv1.Create {
-		for _, secret := range result.secrets {
-			err = a.client.Create(ctx, secret)
-			if err != nil {
-				a.Logger.Error(err, "unable to create secret")
-				return admission.Errored(http.StatusBadRequest, err)
-			}
-		}
-	}
-	if req.Operation == admv1.Update {
-		for _, secret := range result.secrets {
-			err = a.client.Update(ctx, secret)
-			if err != nil {
-				a.Logger.Error(err, "unable to update secret")
-				return admission.Errored(http.StatusBadRequest, err)
-			}
+	if req.Operation == admv1.Create || req.Operation == admv1.Update {
+		err = a.createOrUpdateSecrets(ctx, result.secrets)
+		if err != nil {
+			a.Logger.Error(err, "unable to create secret")
+			return admission.Errored(http.StatusBadRequest, err)
 		}
 	}
 
@@ -161,4 +153,64 @@ func (a *podInjector) InjectClient(c client.Client) error {
 func (a *podInjector) InjectDecoder(d *admission.Decoder) error {
 	a.decoder = d
 	return nil
+}
+
+// createOrUpdateSecrets creates or updates all of the required secrets
+func (a *podInjector) createOrUpdateSecrets(ctx context.Context, secrets []*corev1.Secret) error {
+	for _, secret := range secrets {
+		err := a.client.Create(ctx, secret)
+		if errors.IsAlreadyExists(err) {
+			existingSecret := &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Secret",
+					APIVersion: "v1",
+				},
+			}
+			namespacedName := types.NamespacedName{
+				Name:      secret.Name,
+				Namespace: secret.Namespace,
+			}
+
+			err = a.client.Get(ctx, namespacedName, existingSecret)
+			if err != nil {
+				a.Logger.Error(err, fmt.Sprintf("unable to get secret %s in namespace %s", secret.Name, secret.Namespace))
+				return err
+			}
+
+			if !a.isSecretManagedByTelegrafOperator(existingSecret) {
+				err = fmt.Errorf("unable to update existing secret %s in namespace %s as it is not managed by telegraf-operator", secret.Name, secret.Namespace)
+				return err
+			}
+
+			err = a.client.Update(ctx, secret)
+			if err != nil {
+				a.Logger.Error(err, fmt.Sprintf("unable to update secret %s in namespace %s", secret.Name, secret.Namespace))
+				return err
+			}
+		} else if err != nil {
+			a.Logger.Error(err, fmt.Sprintf("unable to create secret %s in namespace %s", secret.Name, secret.Namespace))
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (a *podInjector) isSecretManagedByTelegrafOperator(secret *corev1.Secret) bool {
+	// verify the secret is of type Opaque
+	if secret.Type != "Opaque" {
+		a.Logger.Info("assuming secret already exists and is not telegraf-matched as its type is not Opaque")
+		return false
+	}
+	// verify that the secret only contains the expected key
+	if len(secret.Data) != 1 || len(secret.Data[TelegrafSecretDataKey]) == 0 {
+		a.Logger.Info("assuming secret already exists and is not telegraf-matched as its data has non-standard keys")
+		return false
+	}
+	if a.RequireAnnotationsForSecret && !(secret.GetAnnotations()[TelegrafSecretAnnotationKey] == TelegrafSecretAnnotationValue) {
+		a.Logger.Info("assuming secret already exists and is not telegraf-matched as it is missing the annotation")
+		return false
+	}
+
+	return true
 }

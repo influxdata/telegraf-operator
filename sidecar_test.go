@@ -19,6 +19,8 @@ var (
 apiVersion: v1
 kind: Secret
 metadata:
+  annotations:
+    app.kubernetes.io/managed-by: telegraf-operator
   creationTimestamp: null
   name: telegraf-config-myname
   namespace: mynamespace
@@ -30,6 +32,8 @@ type: Opaque`
 apiVersion: v1
 kind: Secret
 metadata:
+  annotations:
+    app.kubernetes.io/managed-by: telegraf-operator
   creationTimestamp: null
   name: telegraf-istio-config-myname
   namespace: mynamespace
@@ -293,6 +297,8 @@ func Test_addSidecars(t *testing.T) {
 				`apiVersion: v1
 kind: Secret
 metadata:
+  annotations:
+    app.kubernetes.io/managed-by: telegraf-operator
   creationTimestamp: null
   name: telegraf-config-myname
   namespace: mynamespace
@@ -398,6 +404,8 @@ status: {}
 				`apiVersion: v1
 kind: Secret
 metadata:
+  annotations:
+    app.kubernetes.io/managed-by: telegraf-operator
   creationTimestamp: null
   name: telegraf-config-myname
   namespace: mynamespace
