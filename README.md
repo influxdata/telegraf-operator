@@ -23,7 +23,7 @@ We don't provide yet a production-like deployment of `telegraf-operator` given t
 But we provide a development version that can be installed by running
 
 ```shell
-kubectl apply -f https://github.com/influxdata/telegraf-operator/blob/master/deploy/dev.yml
+kubectl apply -f https://raw.githubusercontent.com/influxdata/telegraf-operator/master/deploy/dev.yml 
 ```
 
 The command above deploys telegraf-operator, using a separate `telegraf-operator` namespace and registering webhooks that will inject a telegraf sidecar to all newly created pods.
@@ -34,7 +34,7 @@ The [examples/classes.yml](examples/classes.yml) file provides a set of classes 
 To create sample set of classes, simply run:
 
 ```shell
-kubectl apply -f https://github.com/influxdata/telegraf-operator/blob/master/examples/classes.yml
+kubectl apply -f https://raw.githubusercontent.com/influxdata/telegraf-operator/master/examples/classes.yml
 ```
 
 ## Installing InfluxDB for data retrieval
@@ -44,7 +44,7 @@ In order to see the data, you can also deploy [InfluxDB](https://github.com/infl
 To set it up in your cluster, simply run:
 
 ```shell
-kubectl apply -f https://github.com/influxdata/telegraf-operator/blob/master/deploy/influxdb.yml
+kubectl apply -f https://raw.githubusercontent.com/influxdata/telegraf-operator/master/deploy/influxdb.yml 
 ```
 
 After that, every new pod (created directly or by creating a deployment or statefulset) in your cluster will have include telegraf container for retrieving data.
@@ -54,7 +54,7 @@ After that, every new pod (created directly or by creating a deployment or state
 You can try it by running one of our samples - such as a redis server. Simply do:
 
 ```shell
-kubectl apply -f https://github.com/influxdata/telegraf-operator/blob/master/examples/redis.yml
+kubectl apply -f https://raw.githubusercontent.com/influxdata/telegraf-operator/master/examples/redis.yml
 ```
 
 You can verify the telegraf container is present by doing:
