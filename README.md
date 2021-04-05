@@ -130,7 +130,7 @@ Please see [redis input plugin documentation](https://github.com/influxdata/tele
 
 The `telegraf.influxdata.com/class` specifies that the `basic` class above should be used.
 
-Scraping by use of `inputs.prometheus` can be configured by using the following annotations. These annotations will create a `inputs.prometheus` configuration based on the value for each annotation. Below is an [example configuration](#example-prometheus-scraping), and the expected output.
+Users can configure the `inputs.prometheus` plugin by setting the following annotations. Below is an [example configuration](#example-prometheus-scraping), and the expected output.
 - `telegraf.influxdata.com/port`: is used to configure which port telegraf should scrape
 - `telegraf.influxdata.com/ports` : is used to configure which port telegraf should scrape, comma separated list of ports to scrape
 - `telegraf.influxdata.com/path` : is used to configure at which path to configure scraping to (a port must be configured also), will apply to all ports if multiple are configured
@@ -170,7 +170,7 @@ spec:
 ```
 
 
-Additional pod annotations are:
+Additional pod annotations that can be used to configure the Telegraf sidecar:
 - `telegraf.influxdata.com/inputs` : is used to configure custom inputs for telegraf
 - `telegraf.influxdata.com/internal` : is used to enable telegraf "internal" input plugins for
 - `telegraf.influxdata.com/image` : is used to configure telegraf image to be used for the `telegraf` sidecar container
