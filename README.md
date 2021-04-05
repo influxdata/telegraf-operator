@@ -130,12 +130,47 @@ Please see [redis input plugin documentation](https://github.com/influxdata/tele
 
 The `telegraf.influxdata.com/class` specifies that the `basic` class above should be used.
 
-The available pod annotations are:
+Scraping by use of `inputs.prometheus` can be configured by using the following annotations. These annotations will create a `inputs.prometheus` configuration based on the value for each annotation. Below is an [example configuration](#example-prometheus-scraping), and the expected output.
 - `telegraf.influxdata.com/port`: is used to configure which port telegraf should scrape
 - `telegraf.influxdata.com/ports` : is used to configure which port telegraf should scrape, comma separated list of ports to scrape
 - `telegraf.influxdata.com/path` : is used to configure at which path to configure scraping to (a port must be configured also), will apply to all ports if multiple are configured
 - `telegraf.influxdata.com/scheme` : is used to configure at the scheme for the metrics to scrape, will apply to all ports if multiple are configured ( only `http` or `https` are allowed as values)
 - `telegraf.influxdata.com/interval` : is used to configure interval for telegraf scraping (Go style duration, e.g 5s, 30s, 2m .. )
+
+### Example Prometheus Scraping
+
+```
+apiVersion: apps/v1
+kind: StatefulSet
+  # ...
+spec:
+  template:
+    metadata:
+      annotations:
+        telegraf.influxdata.com/class: influxdb # User defined output class
+        telegraf.influxdata.com/interval: 30s
+        telegraf.influxdata.com/path: /metrics
+        telegraf.influxdata.com/port: "8086"
+        telegraf.influxdata.com/scheme: http
+      # ...
+    spec:
+      containers:
+      - name: influxdb
+        image: quay.io/influxdb/influxdb:v2.0.4
+```
+
+#### Configuration Output
+
+```
+[[inputs.prometheus]]
+  urls = ["http://127.0.0.1:8086/metrics"]
+  interval = "30s"
+
+[[inputs.internal]]
+```
+
+
+Additional pod annotations are:
 - `telegraf.influxdata.com/inputs` : is used to configure custom inputs for telegraf
 - `telegraf.influxdata.com/internal` : is used to enable telegraf "internal" input plugins for
 - `telegraf.influxdata.com/image` : is used to configure telegraf image to be used for the `telegraf` sidecar container
