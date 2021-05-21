@@ -303,8 +303,7 @@ metadata:
   name: telegraf-config-myname
   namespace: mynamespace
 stringData:
-  telegraf.conf: "\n[[inputs.prometheus]]\n  urls = [\"http://127.0.0.1:6060/metrics\"]\n
-    \ \n\n"
+  telegraf.conf: "\n[[inputs.prometheus]]\n  urls = [\"http://127.0.0.1:6060/metrics\"]\n  \n\n"
 type: Opaque`,
 			},
 		},

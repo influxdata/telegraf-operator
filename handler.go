@@ -21,7 +21,7 @@ import (
 	"net/http"
 
 	"github.com/go-logr/logr"
-	admv1 "k8s.io/api/admission/v1beta1"
+	admv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apiserver/pkg/storage/names"
 
@@ -32,7 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-// +kubebuilder:webhook:path=/mutate-v1-pod,mutating=true,failurePolicy=fail,groups="",resources=pods,verbs=create;update,versions=v1,name=mpod.kb.io
+// +kubebuilder:webhook:path=/mutate-v1-pod,mutating=true,failurePolicy=fail,groups="",resources=pods,verbs=create;update,versions=v1,name=mpod.kb.io,sideEffects=None,admissionReviewVersions=v1
 
 // podInjector inject telegraf Pods
 type podInjector struct {
