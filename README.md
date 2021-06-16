@@ -186,8 +186,3 @@ Additional pod annotations that can be used to configure the Telegraf sidecar:
 
 Please read the [CONTRIBUTING](CONTRIBUTING.md) file for more details on how to get started with contributing to to `telegraf-operator`.
 
-# Maintainers
-
-- [gitirabassi](https://github.com/gitirabassi)
-- [rawkode](https://github.com/rawkode)
-- [wojciechka](https://github.com/wojciechka/)
