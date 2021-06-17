@@ -2,22 +2,18 @@ version: 2
 
 workflows:
   version: 2
-  build-and-deploy:
+  build:
     jobs:
-      - build:
-          filters:
-            tags:
-              only: /.*/
-      - deploy:
-          requires:
-            - build
+      - build
+  container-image:
+    jobs:
+      - container_image:
           filters:
             branches:
-              only:
-                - master
-      - deploytags:
-          requires:
-            - build
+              only: master
+  container-image-release:
+    jobs:
+      - container_image_release:
           filters:
             tags:
               only: /^v.*/
@@ -80,27 +76,27 @@ jobs:
           paths:
             - /go/pkg/mod
           when: always
-  deploy:
+  container_image:
     docker:
       - image: docker:stable-git
     steps:
       - checkout
       - setup_remote_docker
       - run:
-          name: Docker build and push
+          name: Docker build and push using SHA
           command: |
             IMAGE="quay.io/influxdb/telegraf-operator"
             docker build --no-cache -t "$IMAGE:$CIRCLE_SHA1" .
             docker login -u "$QUAY_USER" -p "$QUAY_PASS" quay.io
             docker push "$IMAGE:$CIRCLE_SHA1"
-  deploytags:
+  container_image_release:
     docker:
       - image: docker:stable-git
     steps:
       - checkout
       - setup_remote_docker
       - run:
-          name: Docker build and push
+          name: Docker build and push using release tag
           command: |
             IMAGE="quay.io/influxdb/telegraf-operator"
             docker build --no-cache -t "$IMAGE:$CIRCLE_TAG" .
