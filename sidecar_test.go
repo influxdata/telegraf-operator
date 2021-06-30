@@ -283,6 +283,7 @@ func Test_addSidecars(t *testing.T) {
 		pod                         *corev1.Pod
 		enableDefaultInternalPlugin bool
 		enableIstioInjection        bool
+		telegrafWatchConfig         string
 		istioTelegrafImage          string
 		istioOutputClass            string
 		wantSecrets                 []string
@@ -329,7 +330,11 @@ metadata:
   creationTimestamp: null
 spec:
   containers:
-  - env:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
     - name: NODENAME
       valueFrom:
         fieldRef:
@@ -351,7 +356,7 @@ spec:
     secret:
       secretName: telegraf-config-myname
 status: {}
-			`,
+      `,
 			wantSecrets: []string{testEmptySecret},
 		},
 		{
@@ -370,7 +375,11 @@ metadata:
   creationTimestamp: null
 spec:
   containers:
-  - env:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
     - name: NODENAME
       valueFrom:
         fieldRef:
@@ -392,7 +401,7 @@ spec:
     secret:
       secretName: telegraf-config-myname
 status: {}
-			`,
+      `,
 			wantSecrets: []string{testEmptySecret},
 		},
 		{
@@ -446,7 +455,11 @@ metadata:
   creationTimestamp: null
 spec:
   containers:
-  - env:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
     - name: NODENAME
       valueFrom:
         fieldRef:
@@ -468,7 +481,7 @@ spec:
     secret:
       secretName: telegraf-config-myname
 status: {}
-			`,
+      `,
 			wantSecrets: []string{testEmptySecret},
 		},
 		{
@@ -489,7 +502,11 @@ metadata:
   creationTimestamp: null
 spec:
   containers:
-  - env:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
     - name: NODENAME
       valueFrom:
         fieldRef:
@@ -532,7 +549,11 @@ metadata:
   creationTimestamp: null
 spec:
   containers:
-  - env:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
     - name: NODENAME
       valueFrom:
         fieldRef:
@@ -626,7 +647,11 @@ metadata:
   creationTimestamp: null
 spec:
   containers:
-  - env:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
     - name: NODENAME
       valueFrom:
         fieldRef:
@@ -703,7 +728,11 @@ metadata:
   creationTimestamp: null
 spec:
   containers:
-  - env:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
     - name: NODENAME
       valueFrom:
         fieldRef:
@@ -748,7 +777,11 @@ metadata:
   creationTimestamp: null
 spec:
   containers:
-  - env:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
     - name: NODENAME
       valueFrom:
         fieldRef:
@@ -765,7 +798,11 @@ spec:
     volumeMounts:
     - mountPath: /etc/telegraf
       name: telegraf-config
-  - env:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
     - name: NODENAME
       valueFrom:
         fieldRef:
@@ -793,6 +830,56 @@ status: {}
 `,
 			wantSecrets: []string{testEmptySecret, testEmptyIstioSecret},
 		},
+		{
+			name: "sets config-watch value if specified",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafClass: "default",
+					},
+				},
+			},
+			enableIstioInjection: true,
+			istioOutputClass:     "istio",
+			telegrafWatchConfig:  "inotify",
+			wantPod: `
+metadata:
+  annotations:
+    telegraf.influxdata.com/class: default
+  creationTimestamp: null
+spec:
+  containers:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    - --watch-config
+    - inotify
+    env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    image: docker.io/library/telegraf:1.14
+    name: telegraf
+    resources:
+      limits:
+        cpu: 200m
+        memory: 200Mi
+      requests:
+        cpu: 10m
+        memory: 10Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-config
+  volumes:
+  - name: telegraf-config
+    secret:
+      secretName: telegraf-config-myname
+status: {}
+`,
+			wantSecrets: []string{testEmptySecret},
+		},
 	}
 
 	for _, tt := range tests {
@@ -814,6 +901,7 @@ status: {}
 				ClassDataHandler:            testClassDataHandler,
 				TelegrafDefaultClass:        "default",
 				TelegrafImage:               defaultTelegrafImage,
+				TelegrafWatchConfig:         tt.telegrafWatchConfig,
 				EnableDefaultInternalPlugin: tt.enableDefaultInternalPlugin,
 				EnableIstioInjection:        tt.enableIstioInjection,
 				IstioOutputClass:            tt.istioOutputClass,
