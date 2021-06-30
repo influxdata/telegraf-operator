@@ -60,6 +60,7 @@ const (
 	TelegrafSecretAnnotationKey   = "app.kubernetes.io/managed-by"
 	TelegrafSecretAnnotationValue = "telegraf-operator"
 	TelegrafSecretDataKey         = "telegraf.conf"
+	TelegrafSecretLabelClassName  = TelegrafClass
 )
 
 type sidecarHandler struct {
@@ -182,7 +183,7 @@ func (h *sidecarHandler) addTelegrafSidecar(result *sidecarHandlerResponse, pod 
 		return err
 	}
 
-	return h.addContainerAndSecret(result, pod, container, name, namespace, telegrafConf)
+	return h.addContainerAndSecret(result, pod, container, className, name, namespace, telegrafConf)
 }
 
 func (h *sidecarHandler) addIstioTelegrafSidecar(result *sidecarHandlerResponse, pod *corev1.Pod, name, namespace string) error {
@@ -198,13 +199,13 @@ func (h *sidecarHandler) addIstioTelegrafSidecar(result *sidecarHandlerResponse,
 		return err
 	}
 
-	return h.addContainerAndSecret(result, pod, container, name, namespace, telegrafConf)
+	return h.addContainerAndSecret(result, pod, container, h.IstioOutputClass, name, namespace, telegrafConf)
 }
 
-func (h *sidecarHandler) addContainerAndSecret(result *sidecarHandlerResponse, pod *corev1.Pod, container corev1.Container, name, namespace, telegrafConf string) error {
+func (h *sidecarHandler) addContainerAndSecret(result *sidecarHandlerResponse, pod *corev1.Pod, container corev1.Container, className, name, namespace, telegrafConf string) error {
 	pod.Spec.Containers = append(pod.Spec.Containers, container)
 	pod.Spec.Volumes = append(pod.Spec.Volumes, h.newVolume(name, container.Name))
-	secret, err := h.newSecret(pod, name, namespace, container.Name, telegrafConf)
+	secret, err := h.newSecret(pod, className, name, namespace, container.Name, telegrafConf)
 	if err != nil {
 		return err
 	}
@@ -263,7 +264,7 @@ func (h *sidecarHandler) assembleConf(pod *corev1.Pod, classData string) (telegr
 	return telegrafConf, err
 }
 
-func (h *sidecarHandler) newSecret(pod *corev1.Pod, name, namespace, containerName, telegrafConf string) (*corev1.Secret, error) {
+func (h *sidecarHandler) newSecret(pod *corev1.Pod, className, name, namespace, containerName, telegrafConf string) (*corev1.Secret, error) {
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -274,6 +275,9 @@ func (h *sidecarHandler) newSecret(pod *corev1.Pod, name, namespace, containerNa
 			Namespace: namespace,
 			Annotations: map[string]string{
 				TelegrafSecretAnnotationKey: TelegrafSecretAnnotationValue,
+			},
+			Labels: map[string]string{
+				TelegrafSecretLabelClassName: className,
 			},
 		},
 		Type: "Opaque",

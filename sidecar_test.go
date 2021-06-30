@@ -22,6 +22,8 @@ metadata:
   annotations:
     app.kubernetes.io/managed-by: telegraf-operator
   creationTimestamp: null
+  labels:
+    telegraf.influxdata.com/class: default
   name: telegraf-config-myname
   namespace: mynamespace
 stringData:
@@ -35,6 +37,8 @@ metadata:
   annotations:
     app.kubernetes.io/managed-by: telegraf-operator
   creationTimestamp: null
+  labels:
+    telegraf.influxdata.com/class: istio
   name: telegraf-istio-config-myname
   namespace: mynamespace
 stringData:
@@ -300,6 +304,8 @@ metadata:
   annotations:
     app.kubernetes.io/managed-by: telegraf-operator
   creationTimestamp: null
+  labels:
+    telegraf.influxdata.com/class: default
   name: telegraf-config-myname
   namespace: mynamespace
 stringData:
@@ -406,6 +412,8 @@ metadata:
   annotations:
     app.kubernetes.io/managed-by: telegraf-operator
   creationTimestamp: null
+  labels:
+    telegraf.influxdata.com/class: default
   name: telegraf-config-myname
   namespace: mynamespace
 stringData:
