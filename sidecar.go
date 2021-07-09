@@ -69,6 +69,7 @@ type sidecarHandler struct {
 	Logger                      logr.Logger
 	TelegrafDefaultClass        string
 	TelegrafImage               string
+	TelegrafWatchConfig         string
 	EnableDefaultInternalPlugin bool
 	RequestsCPU                 string
 	RequestsMemory              string
@@ -77,6 +78,7 @@ type sidecarHandler struct {
 	EnableIstioInjection        bool
 	IstioOutputClass            string
 	IstioTelegrafImage          string
+	IstioTelegrafWatchConfig    string
 }
 
 type sidecarHandlerResponse struct {
@@ -363,9 +365,12 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 		return corev1.Container{}, err
 	}
 
+	telegrafContainerCommand := createTelegrafCommand(h.TelegrafWatchConfig)
+
 	baseContainer := corev1.Container{
-		Name:  containerName,
-		Image: telegrafImage,
+		Name:    containerName,
+		Image:   telegrafImage,
+		Command: telegrafContainerCommand,
 		Resources: corev1.ResourceRequirements{
 			Limits: corev1.ResourceList{
 				"cpu":    parsedLimitsCPU,
@@ -436,9 +441,12 @@ func (h *sidecarHandler) newIstioContainer(pod *corev1.Pod, containerName string
 		telegrafImage = h.TelegrafImage
 	}
 
+	telegrafContainerCommand := createTelegrafCommand(h.IstioTelegrafWatchConfig)
+
 	baseContainer := corev1.Container{
-		Name:  containerName,
-		Image: telegrafImage,
+		Name:    containerName,
+		Image:   telegrafImage,
+		Command: telegrafContainerCommand,
 		Resources: corev1.ResourceRequirements{
 			Limits: corev1.ResourceList{
 				"cpu":    parsedLimitsCPU,
@@ -501,4 +509,12 @@ func podHasContainerName(pod *corev1.Pod, name string) bool {
 		}
 	}
 	return false
+}
+
+func createTelegrafCommand(watchConfig string) []string {
+	command := []string{"telegraf", "--config", "/etc/telegraf/telegraf.conf"}
+	if watchConfig != "" {
+		command = append(command, "--watch-config", watchConfig)
+	}
+	return command
 }
