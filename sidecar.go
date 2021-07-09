@@ -61,6 +61,7 @@ const (
 	TelegrafSecretAnnotationValue = "telegraf-operator"
 	TelegrafSecretDataKey         = "telegraf.conf"
 	TelegrafSecretLabelClassName  = TelegrafClass
+	TelegrafSecretLabelPodName    = "telegraf.influxdata.com/pod-name"
 )
 
 type sidecarHandler struct {
@@ -278,6 +279,7 @@ func (h *sidecarHandler) newSecret(pod *corev1.Pod, className, name, namespace, 
 			},
 			Labels: map[string]string{
 				TelegrafSecretLabelClassName: className,
+				TelegrafSecretLabelPodName:   name,
 			},
 		},
 		Type: "Opaque",
