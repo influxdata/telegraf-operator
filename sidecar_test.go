@@ -24,7 +24,7 @@ metadata:
   creationTimestamp: null
   labels:
     telegraf.influxdata.com/class: default
-    telegraf.influxdata.com/pod-name: myname
+    telegraf.influxdata.com/pod: myname
   name: telegraf-config-myname
   namespace: mynamespace
 stringData:
@@ -40,7 +40,7 @@ metadata:
   creationTimestamp: null
   labels:
     telegraf.influxdata.com/class: istio
-    telegraf.influxdata.com/pod-name: myname
+    telegraf.influxdata.com/pod: myname
   name: telegraf-istio-config-myname
   namespace: mynamespace
 stringData:
@@ -308,7 +308,7 @@ metadata:
   creationTimestamp: null
   labels:
     telegraf.influxdata.com/class: default
-    telegraf.influxdata.com/pod-name: myname
+    telegraf.influxdata.com/pod: myname
   name: telegraf-config-myname
   namespace: mynamespace
 stringData:
@@ -417,7 +417,7 @@ metadata:
   creationTimestamp: null
   labels:
     telegraf.influxdata.com/class: default
-    telegraf.influxdata.com/pod-name: myname
+    telegraf.influxdata.com/pod: myname
   name: telegraf-config-myname
   namespace: mynamespace
 stringData:
