@@ -151,6 +151,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	updater, err := newSecretsUpdater(ctrl.Log.WithName("updater"), sidecar)
+	if err != nil {
+		setupLog.Error(err, "setting up secrets updater failed")
+		os.Exit(1)
+	}
+
+	_, err = newTelegrafClassesWatcher(ctrl.Log.WithName("watcher"), telegrafClassesDirectory, updater.onChange)
+	if err != nil {
+		setupLog.Error(err, "setting up watcher failed")
+		os.Exit(1)
+	}
+
 	hookServer.Register("/mutate-v1-pod", &webhook.Admission{Handler: &podInjector{
 		Logger:                      logger,
 		SidecarHandler:              sidecar,

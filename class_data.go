@@ -24,9 +24,15 @@ import (
 	"github.com/influxdata/toml"
 )
 
+// classDataHandler provides a handler for getting class data from class name.
 type classDataHandler struct {
 	Logger                   logr.Logger
 	TelegrafClassesDirectory string
+}
+
+// classDataHandlerInterface defines minimal interface that other parts of telegraf-operator can use and mock.
+type classDataHandlerInterface interface {
+	getData(className string) (string, error)
 }
 
 func (c *classDataHandler) validateClassData() error {
@@ -72,6 +78,7 @@ func (c *classDataHandler) validateClassData() error {
 	return nil
 }
 
+// getData returns class data for a given class name.
 func (c *classDataHandler) getData(className string) (string, error) {
 	data, err := ioutil.ReadFile(filepath.Join(c.TelegrafClassesDirectory, className))
 

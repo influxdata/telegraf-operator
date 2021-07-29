@@ -64,8 +64,15 @@ const (
 	TelegrafSecretLabelPod        = "telegraf.influxdata.com/pod"
 )
 
+// sidecarHandlerInterface defines minimum interface for sidecar handler part related to
+// configurations which also allows test code to provide different implementations.
+type sidecarHandlerInterface interface {
+	assembleConf(pod *corev1.Pod, className string) (telegrafConf string, err error)
+}
+
+// sidecarHandler provides logic for handling telegraf sidecars and related secrets.
 type sidecarHandler struct {
-	ClassDataHandler            *classDataHandler
+	ClassDataHandler            classDataHandlerInterface
 	Logger                      logr.Logger
 	TelegrafDefaultClass        string
 	TelegrafImage               string
@@ -171,12 +178,7 @@ func (h *sidecarHandler) addTelegrafSidecar(result *sidecarHandlerResponse, pod 
 		className = extClass
 	}
 
-	classData, err := h.ClassDataHandler.getData(className)
-	if err != nil {
-		return newNonFatalError(err, "telegraf-operator could not create sidecar container for unknown class")
-	}
-
-	telegrafConf, err := h.assembleConf(pod, classData)
+	telegrafConf, err := h.assembleConf(pod, className)
 	if err != nil {
 		return newNonFatalError(err, "telegraf-operator could not create sidecar container due to error in class data")
 	}
@@ -217,8 +219,17 @@ func (h *sidecarHandler) addContainerAndSecret(result *sidecarHandlerResponse, p
 	return nil
 }
 
+func (h *sidecarHandler) getClassData(className string) (string, error) {
+	return h.ClassDataHandler.getData(className)
+}
+
 // Assembling telegraf configuration
-func (h *sidecarHandler) assembleConf(pod *corev1.Pod, classData string) (telegrafConf string, err error) {
+func (h *sidecarHandler) assembleConf(pod *corev1.Pod, className string) (telegrafConf string, err error) {
+	classData, err := h.ClassDataHandler.getData(className)
+	if err != nil {
+		return "", newNonFatalError(err, "telegraf-operator could not create sidecar container for unknown class")
+	}
+
 	ports := ports(pod)
 	if len(ports) != 0 {
 		path := "/metrics"

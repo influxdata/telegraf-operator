@@ -10,7 +10,7 @@ COPY go.sum go.sum
 RUN go mod download
 
 # Copy the go source
-COPY main.go sidecar.go handler.go class_data.go errors.go ./
+COPY main.go sidecar.go handler.go class_data.go errors.go watcher.go updater.go ./
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager *.go
