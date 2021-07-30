@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -12,10 +14,10 @@ import (
 
 // secretsUpdater updates all secrets managed by telegraf-operator whose contents have changed in all namespaces.
 type secretsUpdater struct {
-	logger     logr.Logger
-	clientset  kubernetes.Interface
-	sidecar    sidecarHandlerInterface
-	batchDelay time.Duration
+	logger       logr.Logger
+	clientset    kubernetes.Interface
+	batchDelay   time.Duration
+	assembleConf func(*corev1.Pod, string) (string, error)
 }
 
 // newSecretsUpdater creates new instance of secretsUpdater.
@@ -31,10 +33,10 @@ func newSecretsUpdater(logger logr.Logger, sidecar *sidecarHandler) (*secretsUpd
 	}
 
 	return &secretsUpdater{
-		logger:     logger,
-		sidecar:    sidecar,
-		clientset:  clientset,
-		batchDelay: 10 * time.Second,
+		logger:       logger,
+		clientset:    clientset,
+		batchDelay:   10 * time.Second,
+		assembleConf: sidecar.assembleConf,
 	}, nil
 }
 
@@ -75,8 +77,14 @@ func (u *secretsUpdater) updateSecretsInNamespace(ctx context.Context, namespace
 	}
 
 	for _, secret := range secrets.Items {
+		// get the pod and class name labels
 		podName := secret.GetLabels()[TelegrafSecretLabelPod]
 		className := secret.GetLabels()[TelegrafSecretLabelClassName]
+
+		// if one of the labels was not present, throw an error
+		if podName == "" || className == "" {
+			return fmt.Errorf(`unable to get pod and class name for secret %s in namespace %s; podName="%s"; className="%s"`, secret.Name, secret.Namespace, podName, className)
+		}
 
 		// get the pod that the secret is used in
 		pod, err := u.clientset.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
@@ -84,7 +92,7 @@ func (u *secretsUpdater) updateSecretsInNamespace(ctx context.Context, namespace
 			return err
 		}
 
-		telegrafConf, err := u.sidecar.assembleConf(pod, className)
+		telegrafConf, err := u.assembleConf(pod, className)
 		if err != nil {
 			return err
 		}

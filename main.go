@@ -117,10 +117,7 @@ func main() {
 
 	logger := setupLog.WithName("podInjector")
 
-	classData := &classDataHandler{
-		Logger:                   logger,
-		TelegrafClassesDirectory: telegrafClassesDirectory,
-	}
+	classData := newDirectoryClassDataHandler(logger, telegrafClassesDirectory)
 
 	err = classData.validateClassData()
 	if err != nil {

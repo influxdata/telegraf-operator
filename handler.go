@@ -40,7 +40,7 @@ type podInjector struct {
 	decoder *admission.Decoder
 	names.NameGenerator
 	Logger                      logr.Logger
-	ClassDataHandler            *classDataHandler
+	ClassDataHandler            *directoryClassDataHandler
 	SidecarHandler              *sidecarHandler
 	RequireAnnotationsForSecret bool
 }

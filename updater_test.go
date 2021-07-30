@@ -20,12 +20,14 @@ type mockSidecarHandler struct {
 	assembleConfResults []string
 }
 
+// assembleConf generates a mock result that is not a valid telegraf configuration, but namespace, name and class name separated by dot for testing purposes
 func (h *mockSidecarHandler) assembleConf(pod *corev1.Pod, className string) (string, error) {
-	val := fmt.Sprintf("%s/%s/%s", pod.Namespace, pod.Name, className)
+	val := fmt.Sprintf("%s.%s.%s", pod.Namespace, pod.Name, className)
 	h.assembleConfResults = append(h.assembleConfResults, val)
 	return val, nil
 }
 
+// get method returns sorted list of invocations that assempleConf() method was called for.
 func (h *mockSidecarHandler) get() []string {
 	sort.Strings(h.assembleConfResults)
 	return h.assembleConfResults
@@ -94,7 +96,7 @@ func newSecretsUpdaterTest(t *testing.T, objects ...runtime.Object) *secretsUpda
 			},
 		},
 		Data: map[string][]byte{
-			TelegrafSecretDataKey: []byte("ns1/pod1/test"),
+			TelegrafSecretDataKey: []byte("ns1.pod1.test"),
 		},
 	}
 
@@ -109,7 +111,7 @@ func newSecretsUpdaterTest(t *testing.T, objects ...runtime.Object) *secretsUpda
 			},
 		},
 		Data: map[string][]byte{
-			TelegrafSecretDataKey: []byte("ns1/pod2/app"),
+			TelegrafSecretDataKey: []byte("ns1.pod2.app"),
 		},
 	}
 
@@ -147,9 +149,9 @@ func (t *secretsUpdaterTest) createObjects() {
 	t.mockSidecar = &mockSidecarHandler{}
 
 	t.updater = &secretsUpdater{
-		logger:    t.logger,
-		clientset: t.fakeClient,
-		sidecar:   t.mockSidecar,
+		logger:       t.logger,
+		clientset:    t.fakeClient,
+		assembleConf: t.mockSidecar.assembleConf,
 	}
 
 }
@@ -160,7 +162,7 @@ func Test_AssembleConfForSecretsWithLabels(t *testing.T) {
 	test.createObjects()
 	test.updater.onChange()
 	// validate that assembleConf() was called for secret1 and secret2, but not secret3
-	if want, got := "ns1/pod1/test;ns1/pod2/app", strings.Join(test.mockSidecar.get(), ";"); want != got {
+	if want, got := "ns1.pod1.test;ns1.pod2.app", strings.Join(test.mockSidecar.get(), ";"); want != got {
 		t.Errorf("wrong configurations assembled; want=%q; got=%q", want, got)
 	}
 

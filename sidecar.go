@@ -64,15 +64,9 @@ const (
 	TelegrafSecretLabelPod        = "telegraf.influxdata.com/pod"
 )
 
-// sidecarHandlerInterface defines minimum interface for sidecar handler part related to
-// configurations which also allows test code to provide different implementations.
-type sidecarHandlerInterface interface {
-	assembleConf(pod *corev1.Pod, className string) (telegrafConf string, err error)
-}
-
 // sidecarHandler provides logic for handling telegraf sidecars and related secrets.
 type sidecarHandler struct {
-	ClassDataHandler            classDataHandlerInterface
+	ClassDataHandler            classDataHandler
 	Logger                      logr.Logger
 	TelegrafDefaultClass        string
 	TelegrafImage               string

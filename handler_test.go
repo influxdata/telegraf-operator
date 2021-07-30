@@ -839,7 +839,7 @@ func Test_podInjector_Handle(t *testing.T) {
 
 			logger := &logrTesting.TestLogger{T: t}
 
-			testClassDataHandler := &classDataHandler{
+			testClassDataHandler := &directoryClassDataHandler{
 				Logger:                   logger,
 				TelegrafClassesDirectory: dir,
 			}

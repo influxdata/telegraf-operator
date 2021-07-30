@@ -46,7 +46,7 @@ func Test_classDataHandler_getData(t *testing.T) {
 			dir := createTempClassesDirectory(t, tt.classes)
 			defer os.RemoveAll(dir)
 
-			testClassDataHandler := &classDataHandler{
+			testClassDataHandler := &directoryClassDataHandler{
 				Logger:                   logger,
 				TelegrafClassesDirectory: dir,
 			}
@@ -95,7 +95,7 @@ func Test_classDataHandler_validateClassData(t *testing.T) {
 			dir := createTempClassesDirectory(t, tt.classes)
 			defer os.RemoveAll(dir)
 
-			testClassDataHandler := &classDataHandler{
+			testClassDataHandler := &directoryClassDataHandler{
 				Logger:                   logger,
 				TelegrafClassesDirectory: dir,
 			}

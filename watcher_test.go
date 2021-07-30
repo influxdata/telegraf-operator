@@ -28,7 +28,7 @@ func testWatcher(t *testing.T, onChange telegrafClassesOnChange) *telegrafClasse
 		watcherEvents: make(chan fsnotify.Event, 100),
 		logger:        logger,
 		onChange:      onChange,
-		eventChannel:  make(chan bool, 100),
+		eventChannel:  make(chan struct{}, 100),
 		eventDelay:    50 * time.Millisecond,
 	}
 

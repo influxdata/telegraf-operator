@@ -21,7 +21,7 @@ type telegrafClassesWatcher struct {
 	onChange      telegrafClassesOnChange
 
 	eventCount   uint64
-	eventChannel chan bool
+	eventChannel chan struct{}
 	eventDelay   time.Duration
 }
 
@@ -44,8 +44,19 @@ func newTelegrafClassesWatcher(logger logr.Logger, telegrafClassesDirectory stri
 	for _, item := range items {
 		name := item.Name()
 
-		// add all items in the classes directory except for current/previous secret contents that begin with "..", "." and ".."
-		// explicitly add "..data" directory as this is the directory that maps current state of the secret
+		// Add all items in the classes directory except for current/previous secret contents that begin with "..", "." and ".."
+		// explicitly add "..data" directory as this is the directory that maps current state of the secret.
+		//
+		// Example listing of classes directory:
+		//
+		// drwxrwxrwt 3 root root  100 Jul 29 12:27 .
+		// drwxr-xr-x 1 root root 4096 Jul 29 12:26 ..
+		// drwxr-xr-x 2 root root   60 Jul 29 12:27 ..2021_07_29_12_27_39.113045998
+		// lrwxrwxrwx 1 root root   31 Jul 29 12:27 ..data -> ..2021_07_29_12_27_39.113045998
+		// lrwxrwxrwx 1 root root   20 Jul 29 12:26 app -> ..data/app
+		// lrwxrwxrwx 1 root root   20 Jul 29 12:26 basic -> ..data/basic
+		//
+		// in the above case, we want to match "..data", "app" and "basic", but skip ".", ".." and "..2021_07_29_12_27_39.113045998"
 		if name == "..data" || (name != "." && !strings.HasPrefix(name, "..")) {
 			p := filepath.Join(telegrafClassesDirectory, name)
 			logger.Info("adding item to watch", "path", p)
@@ -112,7 +123,7 @@ func (w *telegrafClassesWatcher) monitorForChanges() {
 			// increase the event counter and send a message to goroutine
 			// that batches invocations of onChange()
 			atomic.AddUint64(&w.eventCount, 1)
-			w.eventChannel <- true
+			w.eventChannel <- struct{}{}
 		}
 	}
 }

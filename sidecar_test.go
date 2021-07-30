@@ -63,6 +63,10 @@ func newMockClassDataHandler(classes map[string]string) *mockClassDataHandler {
 	return &mockClassDataHandler{classes: classes}
 }
 
+func (h *mockClassDataHandler) validateClassData() error {
+	return nil
+}
+
 func (m *mockClassDataHandler) getData(className string) (string, error) {
 	v, ok := m.classes[className]
 	if ok {
@@ -915,7 +919,7 @@ status: {}
 
 			logger := &logrTesting.TestLogger{T: t}
 
-			testClassDataHandler := &classDataHandler{
+			testClassDataHandler := &directoryClassDataHandler{
 				Logger:                   logger,
 				TelegrafClassesDirectory: dir,
 			}
