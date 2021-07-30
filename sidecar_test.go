@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -53,6 +54,27 @@ stringData:
     # istio outputs
 type: Opaque`
 )
+
+type mockClassDataHandler struct {
+	classes map[string]string
+}
+
+func newMockClassDataHandler(classes map[string]string) *mockClassDataHandler {
+	return &mockClassDataHandler{classes: classes}
+}
+
+func (h *mockClassDataHandler) validateClassData() error {
+	return nil
+}
+
+func (m *mockClassDataHandler) getData(className string) (string, error) {
+	v, ok := m.classes[className]
+	if ok {
+		return v, nil
+	} else {
+		return "", fmt.Errorf("class %s not found", className)
+	}
+}
 
 func Test_skip(t *testing.T) {
 	handler := &sidecarHandler{
@@ -260,6 +282,7 @@ func Test_assembleConf(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			handler := &sidecarHandler{
+				ClassDataHandler:            newMockClassDataHandler(map[string]string{"class": tt.classData}),
 				EnableDefaultInternalPlugin: tt.enableDefaultInternalPlugin,
 				RequestsCPU:                 defaultRequestsCPU,
 				RequestsMemory:              defaultRequestsMemory,
@@ -267,7 +290,7 @@ func Test_assembleConf(t *testing.T) {
 				LimitsMemory:                defaultLimitsMemory,
 				Logger:                      &logrTesting.TestLogger{T: t},
 			}
-			gotConfig, err := handler.assembleConf(tt.pod, tt.classData)
+			gotConfig, err := handler.assembleConf(tt.pod, "class")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("assembleConf() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -592,7 +615,7 @@ status: {}
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
-						corev1.Container{
+						{
 							Name:  "telegraf",
 							Image: "alpine:latest",
 						},
@@ -690,7 +713,7 @@ status: {}
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
-						corev1.Container{
+						{
 							Name:  "telegraf-istio",
 							Image: "alpine:latest",
 						},
@@ -896,7 +919,7 @@ status: {}
 
 			logger := &logrTesting.TestLogger{T: t}
 
-			testClassDataHandler := &classDataHandler{
+			testClassDataHandler := &directoryClassDataHandler{
 				Logger:                   logger,
 				TelegrafClassesDirectory: dir,
 			}

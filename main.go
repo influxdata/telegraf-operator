@@ -117,10 +117,7 @@ func main() {
 
 	logger := setupLog.WithName("podInjector")
 
-	classData := &classDataHandler{
-		Logger:                   logger,
-		TelegrafClassesDirectory: telegrafClassesDirectory,
-	}
+	classData := newDirectoryClassDataHandler(logger, telegrafClassesDirectory)
 
 	err = classData.validateClassData()
 	if err != nil {
@@ -148,6 +145,18 @@ func main() {
 	err = sidecar.validateRequestsAndLimits()
 	if err != nil {
 		setupLog.Error(err, "default resources validation failed")
+		os.Exit(1)
+	}
+
+	updater, err := newSecretsUpdater(ctrl.Log.WithName("updater"), sidecar)
+	if err != nil {
+		setupLog.Error(err, "setting up secrets updater failed")
+		os.Exit(1)
+	}
+
+	_, err = newTelegrafClassesWatcher(ctrl.Log.WithName("watcher"), telegrafClassesDirectory, updater.onChange)
+	if err != nil {
+		setupLog.Error(err, "setting up watcher failed")
 		os.Exit(1)
 	}
 

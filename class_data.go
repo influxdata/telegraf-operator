@@ -24,12 +24,26 @@ import (
 	"github.com/influxdata/toml"
 )
 
-type classDataHandler struct {
+// directoryClassDataHandler provides a handler for getting class data from class name.
+type directoryClassDataHandler struct {
 	Logger                   logr.Logger
 	TelegrafClassesDirectory string
 }
 
-func (c *classDataHandler) validateClassData() error {
+// classDataHandler defines interface for validating class data and converting from class name to class data.
+type classDataHandler interface {
+	getData(className string) (string, error)
+	validateClassData() error
+}
+
+func newDirectoryClassDataHandler(logger logr.Logger, telegrafClassesDirectory string) *directoryClassDataHandler {
+	return &directoryClassDataHandler{
+		Logger:                   logger,
+		TelegrafClassesDirectory: telegrafClassesDirectory,
+	}
+}
+
+func (c *directoryClassDataHandler) validateClassData() error {
 	classDataValid := true
 	filesAvailable := false
 
@@ -72,7 +86,8 @@ func (c *classDataHandler) validateClassData() error {
 	return nil
 }
 
-func (c *classDataHandler) getData(className string) (string, error) {
+// getData returns class data for a given class name.
+func (c *directoryClassDataHandler) getData(className string) (string, error) {
 	data, err := ioutil.ReadFile(filepath.Join(c.TelegrafClassesDirectory, className))
 
 	if err != nil {

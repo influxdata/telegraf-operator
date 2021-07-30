@@ -3,6 +3,7 @@ module github.com/influxdata/telegraf-operator
 go 1.16
 
 require (
+	github.com/fsnotify/fsnotify v1.4.9
 	github.com/go-logr/logr v0.3.0
 	github.com/influxdata/toml v0.0.0-20180607005434-2a2e3012f7cf
 	github.com/naoina/go-stringutil v0.1.0 // indirect
