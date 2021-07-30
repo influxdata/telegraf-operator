@@ -62,7 +62,7 @@ func newTelegrafClassesWatcher(logger logr.Logger, telegrafClassesDirectory stri
 		onChange:      onChange,
 
 		// allow large number of messages in the channel to avoid blocking
-		eventChannel: make(chan bool, 100),
+		eventChannel: make(chan struct{}, 100),
 
 		// delay by 10 seconds to group multiple fsnotify events into single invocation of callback
 		eventDelay: 10 * time.Second,
@@ -83,8 +83,7 @@ func (w *telegrafClassesWatcher) createGoroutines() {
 // based on events sent from monitorForChanges().
 func (w *telegrafClassesWatcher) batchChanges() {
 	var previousEventCount uint64
-	for {
-		<-w.eventChannel
+	for range w.eventChannel {
 
 		currentEventCount := atomic.LoadUint64(&w.eventCount)
 

@@ -90,7 +90,7 @@ func (u *secretsUpdater) updateSecretsInNamespace(ctx context.Context, namespace
 		}
 
 		// check whether secret should be updated, perform the update if needed
-		if secret.Data[TelegrafSecretDataKey] == nil || string(secret.Data[TelegrafSecretDataKey]) != telegrafConf {
+		if string(secret.Data[TelegrafSecretDataKey]) != telegrafConf {
 			u.logger.Info("updating secret", "namespace", namespace, "name", secret.Name, "podName", podName, "class", className)
 			secret.Data[TelegrafSecretDataKey] = []byte(telegrafConf)
 

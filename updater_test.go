@@ -161,7 +161,7 @@ func Test_AssembleConfForSecretsWithLabels(t *testing.T) {
 	test.updater.onChange()
 	// validate that assembleConf() was called for secret1 and secret2, but not secret3
 	if want, got := "ns1/pod1/test;ns1/pod2/app", strings.Join(test.mockSidecar.get(), ";"); want != got {
-		t.Errorf("wrong configurations assembled; want=%v; got=%v", want, got)
+		t.Errorf("wrong configurations assembled; want=%q; got=%q", want, got)
 	}
 
 	// assume 4 actions called on Kubernetes client - list namespaces, list secrets, get 2 pods
