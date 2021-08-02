@@ -106,9 +106,9 @@ spec:
             # allow injecting telegraf-istio sidecar for pods with
             # istio sidecar annotations enabled
             - --enable-istio-injection=true
-            # if telegraf image supports it, telegraf-watch-config can be set so
-            #  telegraf-opeator and telegraf hot reload changes when classes change
-            # - --telegraf-watch-config=inotify
+            # if telegraf image supports it (as of version 1.19.2), telegraf-watch-config can be
+            # set to enable telegraf-opeator and telegraf hot reloading changes to classes secret
+            - --telegraf-watch-config=inotify
           env:
             - name: POD_NAMESPACE
               valueFrom:

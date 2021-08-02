@@ -365,7 +365,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.14
+    image: docker.io/library/telegraf:1.19
     name: telegraf
     resources:
       limits:
@@ -491,7 +491,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.14
+    image: docker.io/library/telegraf:1.19
     name: telegraf
     resources:
       limits:
@@ -538,7 +538,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.14
+    image: docker.io/library/telegraf:1.19
     name: telegraf
     resources:
       limits:
@@ -585,7 +585,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.14
+    image: docker.io/library/telegraf:1.19
     name: telegraf
     resources:
       limits:
@@ -683,7 +683,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.14
+    image: docker.io/library/telegraf:1.19
     name: telegraf-istio
     resources:
       limits:
@@ -813,7 +813,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.14
+    image: docker.io/library/telegraf:1.19
     name: telegraf
     resources:
       limits:
@@ -834,7 +834,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.14
+    image: docker.io/library/telegraf:1.19
     name: telegraf-istio
     resources:
       limits:
@@ -887,7 +887,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.14
+    image: docker.io/library/telegraf:1.19
     name: telegraf
     resources:
       limits:

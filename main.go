@@ -38,7 +38,7 @@ var (
 )
 
 const (
-	defaultTelegrafImage  = "docker.io/library/telegraf:1.14"
+	defaultTelegrafImage  = "docker.io/library/telegraf:1.19"
 	defaultRequestsCPU    = "10m"
 	defaultRequestsMemory = "10Mi"
 	defaultLimitsCPU      = "200m"
