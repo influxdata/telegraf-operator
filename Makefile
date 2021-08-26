@@ -88,6 +88,8 @@ kind-start:
 	kubectl config use-context kind-telegraf-operator-test
 	# deploy InfluxDB in the cluster
 	kubectl apply -f deploy/influxdb.yml
+	# create test namespace
+	kubectl create namespace test
 
 kind-delete:
 	kind delete cluster --name=telegraf-operator-test
@@ -114,10 +116,8 @@ kind-test:
 	kubectl config use-context kind-telegraf-operator-test
 	kubectl apply -f examples/classes.yml
 	kubectl apply -f deploy/dev.yml
-	# wait 15 seconds to ensure the pod is already in running state
-	sleep 15
-	# deploy redis as sample deployment
-	kubectl create namespace test
+	# wait 20 seconds to ensure the pod is already in running state
+	sleep 20
 	kubectl apply -f examples/redis.yml
 	sleep 2
 	kubectl describe pod --namespace=test redis
