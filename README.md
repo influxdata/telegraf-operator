@@ -101,6 +101,24 @@ stringData:
 
 The above defines that any pod whose Telegraf class is `basic` will have its metrics sent to a specific URL, which in this case is an InfluxDB v1 instance deployed in same cluster. Its metrics will also be logged by `telegraf` container for convenience. The data will also have `hostname`, `nodename` and `type` tags added for all metrics.
 
+## Hot reload
+
+As of version 1.3.0, telegraf-operator supports detecting when the classes configuration has changed and update telegraf configuration for affected pods.
+
+This functionality requires telegraf version 1.19, which is the first version that supports the new `--watch-config` option required for this feature.
+
+The [development deployment example](deploy/dev.yml) has hot reload enabled. For Helm chart, version 1.3.0 or newer has to be used and `hotReload` should be set to true. It is set to false by default to avoid issues when using a version of telegraf prior to 1.19.0.
+
+If deploying telegraf-operator in a different way, `telegraf-operator` should be run with `--telegraf-watch-config=inotify` option. The `args` section of the `telegraf-operator` Deployment should be added or modified and include the said options - such as:
+
+```
+          args:
+            - --enable-default-internal-plugin=true
+            - --telegraf-default-class=basic
+            - --telegraf-classes-directory=/config/classes
+            - --enable-istio-injection=true
+```
+
 ## Pod-level annotations
 
 Each pod (either standalone or as part of deployment as well as statefulset) may also specify how it should be monitored using metadata.
