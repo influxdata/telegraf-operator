@@ -10,7 +10,8 @@ workflows:
       - container_image:
           filters:
             branches:
-              only: master
+              only:
+                - master
   container-image-release:
     jobs:
       - container_image_release:
@@ -77,28 +78,38 @@ jobs:
             - /go/pkg/mod
           when: always
   container_image:
-    docker:
-      - image: docker:stable-git
+    machine:
+      image: ubuntu-2004:202107-02
     steps:
       - checkout
-      - setup_remote_docker
       - run:
           name: Docker build and push using SHA
           command: |
+            export DOCKER_BUILDKIT=1
             IMAGE="quay.io/influxdb/telegraf-operator"
-            docker build --no-cache -t "$IMAGE:$CIRCLE_SHA1" .
             docker login -u "$QUAY_USER" -p "$QUAY_PASS" quay.io
-            docker push "$IMAGE:$CIRCLE_SHA1"
+            docker buildx create --name "multiarch" || true
+            docker buildx use "multiarch"
+            docker buildx build \
+              --output=type=registry \
+              --platform linux/amd64,linux/arm64,linux/arm/v7 \
+              --tag "$IMAGE:$CIRCLE_SHA1" \
+              --file Dockerfile.multi-arch .
   container_image_release:
-    docker:
-      - image: docker:stable-git
+    machine:
+      image: ubuntu-2004:202107-02
     steps:
       - checkout
-      - setup_remote_docker
       - run:
           name: Docker build and push using release tag
           command: |
+            export DOCKER_BUILDKIT=1
             IMAGE="quay.io/influxdb/telegraf-operator"
-            docker build --no-cache -t "$IMAGE:$CIRCLE_TAG" .
             docker login -u "$QUAY_USER" -p "$QUAY_PASS" quay.io
-            docker push "$IMAGE:$CIRCLE_TAG"
+            docker buildx create --name "multiarch" || true
+            docker buildx use "multiarch"
+            docker buildx build \
+              --output=type=registry \
+              --platform linux/amd64,linux/arm64,linux/arm/v7 \
+              --tag "$IMAGE:$CIRCLE_TAG" \
+              --file Dockerfile.multi-arch .
