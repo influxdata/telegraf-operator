@@ -78,6 +78,7 @@ jobs:
             - /go/pkg/mod
           when: always
   container_image:
+    # using a full VM is needed to build multi-arch container images
     machine:
       image: ubuntu-2004:202107-02
     steps:
@@ -88,14 +89,19 @@ jobs:
             export DOCKER_BUILDKIT=1
             IMAGE="quay.io/influxdb/telegraf-operator"
             docker login -u "$QUAY_USER" -p "$QUAY_PASS" quay.io
+
+            # create a new builder to support multi-arch images as the default builder doesn't support it
             docker buildx create --name "multiarch" || true
             docker buildx use "multiarch"
+
+            # build image
             docker buildx build \
               --output=type=registry \
               --platform linux/amd64,linux/arm64,linux/arm/v7 \
               --tag "$IMAGE:$CIRCLE_SHA1" \
               --file Dockerfile.multi-arch .
   container_image_release:
+    # using a full VM is needed to build multi-arch container images
     machine:
       image: ubuntu-2004:202107-02
     steps:
@@ -106,8 +112,12 @@ jobs:
             export DOCKER_BUILDKIT=1
             IMAGE="quay.io/influxdb/telegraf-operator"
             docker login -u "$QUAY_USER" -p "$QUAY_PASS" quay.io
+
+            # create a new builder to support multi-arch images as the default builder doesn't support it
             docker buildx create --name "multiarch" || true
             docker buildx use "multiarch"
+
+            # build image
             docker buildx build \
               --output=type=registry \
               --platform linux/amd64,linux/arm64,linux/arm/v7 \
