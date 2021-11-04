@@ -122,4 +122,5 @@ jobs:
               --output=type=registry \
               --platform linux/amd64,linux/arm64,linux/arm/v7 \
               --tag "$IMAGE:$CIRCLE_TAG" \
+              --tag "$IMAGE:latest" \
               --file Dockerfile.multi-arch .
