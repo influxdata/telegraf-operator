@@ -1,4 +1,3 @@
-
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
@@ -76,10 +75,7 @@ apply:
 	kubectl apply -k deploy
 
 genca:
-	cd deploy/stubdata && openssl genrsa -out tls.key 4096 && openssl req -x509 -new -nodes -key tls.key -subj "/C=NL/ST=Zuid Holland/L=Rotterdam/O=Sparkling Network/OU=IT Department/CN=telegraf-injector.telegraf-injector.svc" -sha256 -days 1024 -out tls.crt
-	kubectl delete secret telegraf-injector-certs -n telegraf-injector
-	kubectl create secret tls telegraf-injector-certs -n telegraf-injector --cert=deploy/stubdata/tls.crt --key=deploy/stubdata/tls.key
-	cat deploy/stubdata/tls.crt | base64 | pbcopy
+	./scripts/genca.bash
 
 kind-start:
 	# create kind cluster
