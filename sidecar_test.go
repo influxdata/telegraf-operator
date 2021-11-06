@@ -907,6 +907,251 @@ status: {}
 `,
 			wantSecrets: []string{testEmptySecret},
 		},
+		{
+			name: "validate secret-env annotation usage creation",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafSecretEnv: "mysecret",
+					},
+				},
+			},
+			wantPod: `
+metadata:
+  annotations:
+    telegraf.influxdata.com/secret-env: mysecret
+  creationTimestamp: null
+spec:
+  containers:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    envFrom:
+    - secretRef:
+        name: mysecret
+        optional: true
+    image: docker.io/library/telegraf:1.19
+    name: telegraf
+    resources:
+      limits:
+        cpu: 200m
+        memory: 200Mi
+      requests:
+        cpu: 10m
+        memory: 10Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-config
+  volumes:
+  - name: telegraf-config
+    secret:
+      secretName: telegraf-config-myname
+status: {}
+      `,
+			wantSecrets: []string{testEmptySecret},
+		},
+		{
+			name: "validate env-fieldref- annotation usage creation",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafEnvFieldRef + "NAMESPACE": "metadata.namespace",
+					},
+				},
+			},
+			wantPod: `
+metadata:
+  annotations:
+    telegraf.influxdata.com/env-fieldref-NAMESPACE: metadata.namespace
+  creationTimestamp: null
+spec:
+  containers:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    image: docker.io/library/telegraf:1.19
+    name: telegraf
+    resources:
+      limits:
+        cpu: 200m
+        memory: 200Mi
+      requests:
+        cpu: 10m
+        memory: 10Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-config
+  volumes:
+  - name: telegraf-config
+    secret:
+      secretName: telegraf-config-myname
+status: {}
+      `,
+			wantSecrets: []string{testEmptySecret},
+		},
+		{
+			name: "validate env-literal- annotation usage creation",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafEnvLiteral + "STACK_VERSION": "1.0",
+					},
+				},
+			},
+			wantPod: `
+metadata:
+  annotations:
+    telegraf.influxdata.com/env-literal-STACK_VERSION: "1.0"
+  creationTimestamp: null
+spec:
+  containers:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: STACK_VERSION
+      value: "1.0"
+    image: docker.io/library/telegraf:1.19
+    name: telegraf
+    resources:
+      limits:
+        cpu: 200m
+        memory: 200Mi
+      requests:
+        cpu: 10m
+        memory: 10Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-config
+  volumes:
+  - name: telegraf-config
+    secret:
+      secretName: telegraf-config-myname
+status: {}
+      `,
+			wantSecrets: []string{testEmptySecret},
+		},
+		{
+			name: "validate env-configmapkeyref- annotation usage creation",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafEnvConfigMapKeyRef + "VERSION": "configmap-name.application.version",
+					},
+				},
+			},
+			wantPod: `
+metadata:
+  annotations:
+    telegraf.influxdata.com/env-configmapkeyref-VERSION: configmap-name.application.version
+  creationTimestamp: null
+spec:
+  containers:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: VERSION
+      valueFrom:
+        configMapKeyRef:
+          key: application.version
+          name: configmap-name
+    image: docker.io/library/telegraf:1.19
+    name: telegraf
+    resources:
+      limits:
+        cpu: 200m
+        memory: 200Mi
+      requests:
+        cpu: 10m
+        memory: 10Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-config
+  volumes:
+  - name: telegraf-config
+    secret:
+      secretName: telegraf-config-myname
+status: {}
+      `,
+			wantSecrets: []string{testEmptySecret},
+		},
+		{
+			name: "validate env-secretref- annotation usage creation",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafEnvSecretKeyRef + "PASSWORD": "app-secret.user.password",
+					},
+				},
+			},
+			wantPod: `
+metadata:
+  annotations:
+    telegraf.influxdata.com/env-secretkeyref-PASSWORD: app-secret.user.password
+  creationTimestamp: null
+spec:
+  containers:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: PASSWORD
+      valueFrom:
+        secretKeyRef:
+          key: user.password
+          name: app-secret
+    image: docker.io/library/telegraf:1.19
+    name: telegraf
+    resources:
+      limits:
+        cpu: 200m
+        memory: 200Mi
+      requests:
+        cpu: 10m
+        memory: 10Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-config
+  volumes:
+  - name: telegraf-config
+    secret:
+      secretName: telegraf-config-myname
+status: {}
+      `,
+			wantSecrets: []string{testEmptySecret},
+		},
 	}
 
 	for _, tt := range tests {

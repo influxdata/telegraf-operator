@@ -194,10 +194,55 @@ Additional pod annotations that can be used to configure the Telegraf sidecar:
 - `telegraf.influxdata.com/image` : is used to configure telegraf image to be used for the `telegraf` sidecar container
 - `telegraf.influxdata.com/class` : configures which kind of class to use (classes are configured on the operator)
 - `telegraf.influxdata.com/secret-env` : allows adding secrets to the telegraf sidecar in the form of environment variables
+- `telegraf.influxdata.com/env-configmapkeyref-<VARIABLE_NAME>` : allows adding configmap key references to the telegraf sidecar in the form of an environment variable
+- `telegraf.influxdata.com/env-fieldref-<VARIABLE_NAME>` : allows adding fieldref references to the telegraf sidecar in the form of an environment variable
+- `telegraf.influxdata.com/env-literal-<VARIABLE_NAME>` : allows adding a literal to the telegraf sidecar in the form of an environment variable
+- `telegraf.influxdata.com/env-secretkeyref-<VARIABLE_NAME>` : allows adding secret key references to the telegraf sidecar in the form of an environment variable
 - `telegraf.influxdata.com/requests-cpu` : allows specifying resource requests for CPU
 - `telegraf.influxdata.com/requests-memory` : allows specifying resource requests for memory
 - `telegraf.influxdata.com/limits-cpu` : allows specifying resource limits for CPU
 - `telegraf.influxdata.com/limits-memory` : allows specifying resource limits for memory
+
+
+##### Example of extra additional options
+
+```
+apiVersion: apps/v1
+kind: StatefulSet
+  # ...
+spec:
+  template:
+    metadata:
+      labels:
+        app: redis
+      annotations:
+        telegraf.influxdata.com/env-fieldref-NAMESPACE: metadata.namespace
+        telegraf.influxdata.com/env-fieldref-APP: metadata.labels['app']
+        telegraf.influxdata.com/env-configmapkeyref-REDIS_SERVER: configmap-name.redis.url
+        telegraf.influxdata.com/env-secretkeyref-PASSWORD: app-secret.redis.password
+        telegraf.influxdata.com/env-literal-VERSION: "1.0"
+        telegraf.influxdata.com/inputs: |+
+          [[inputs.redis]]
+            servers = ["$REDIS_SERVER"]
+            password = "$PASSWORD"
+      # ...
+    spec:
+      containers:
+      # ...
+```
+These annotations result in additional environment variables available for the telegraf container, which can be used in for example the tags.   
+And they can be used in the additional input configuration provided in the annotation as shown above.
+
+```
+stringData:
+  basic: |+
+    [global_tags]
+      hostname = "$HOSTNAME"
+      nodename = "$NODENAME"
+      namespace = "$NAMESPACE"
+      app = "$APP"
+      version = "$VERSION"
+```
 
 
 # Contributing to telegraf-operator

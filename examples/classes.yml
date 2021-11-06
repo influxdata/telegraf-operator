@@ -19,6 +19,7 @@ stringData:
     [global_tags]
       hostname = "$HOSTNAME"
       nodename = "$NODENAME"
+      namespace = "$NAMESPACE"
       type = "app"
   basic: |+
     [[outputs.influxdb]]
