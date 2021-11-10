@@ -112,8 +112,7 @@ kind-test:
 	kubectl config use-context kind-telegraf-operator-test
 	kubectl apply -f examples/classes.yml
 	kubectl apply -f deploy/dev.yml
-	# wait 20 seconds to ensure the pod is already in running state
-	sleep 20
+	kubectl wait --timeout=5m -n telegraf-operator --for=condition=available deployment/telegraf-operator
 	kubectl apply -f examples/redis.yml
 	sleep 2
 	kubectl describe pod --namespace=test redis
