@@ -461,6 +461,8 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 					},
 				},
 			})
+		} else {
+			h.Logger.Info("unable to parse configmapkeyref %s with value of \"%s\"", name, value)
 		}
 	}
 
@@ -479,6 +481,8 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 					},
 				},
 			})
+		} else {
+			h.Logger.Info("unable to parse secretkeyref %s with value of \"%s\"", name, value)
 		}
 	}
 	return baseContainer, nil
