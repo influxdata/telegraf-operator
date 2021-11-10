@@ -45,6 +45,14 @@ const (
 	TelegrafClass = "telegraf.influxdata.com/class"
 	// TelegrafSecretEnv allows adding secrets to the telegraf sidecar in the form of environment variables
 	TelegrafSecretEnv = "telegraf.influxdata.com/secret-env"
+	// TelegrafEnvFieldRefPrefix allows adding fieldref references to the telegraf sidecar in the form of an environment variable
+	TelegrafEnvFieldRefPrefix = "telegraf.influxdata.com/env-fieldref-"
+	// TelegrafEnvConfigMapKeyRefPrefix allows adding configmap key references to the telegraf sidecar in the form of an environment variable
+	TelegrafEnvConfigMapKeyRefPrefix = "telegraf.influxdata.com/env-configmapkeyref-"
+	// TelegrafEnvSecretKeyRefPrefix allows adding secret key references to the telegraf sidecar in the form of an environment variable
+	TelegrafEnvSecretKeyRefPrefix = "telegraf.influxdata.com/env-secretkeyref-"
+	// TelegrafEnvLiteralPrefix allows adding a literal to the telegraf sidecar in the form of an environment variable
+	TelegrafEnvLiteralPrefix = "telegraf.influxdata.com/env-literal-"
 	// TelegrafImage allows specifying a custom telegraf image to be used in the sidecar container
 	TelegrafImage = "telegraf.influxdata.com/image"
 	// TelegrafRequestsCPU allows specifying custom CPU resource requests
@@ -417,7 +425,77 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 			},
 		}
 	}
+
+	envFieldRef := AnnotationsWithPrefix(pod.Annotations, TelegrafEnvFieldRefPrefix)
+	for name, fieldPath := range envFieldRef {
+		baseContainer.Env = append(baseContainer.Env, corev1.EnvVar{
+			Name: name,
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: fieldPath,
+				},
+			},
+		})
+	}
+
+	literals := AnnotationsWithPrefix(pod.Annotations, TelegrafEnvLiteralPrefix)
+	for name, value := range literals {
+		baseContainer.Env = append(baseContainer.Env, corev1.EnvVar{
+			Name:  name,
+			Value: value,
+		})
+	}
+
+	configMapKeyRefs := AnnotationsWithPrefix(pod.Annotations, TelegrafEnvConfigMapKeyRefPrefix)
+	for name, value := range configMapKeyRefs {
+		selector := strings.SplitN(value, ".", 2)
+		if len(selector) == 2 {
+			baseContainer.Env = append(baseContainer.Env, corev1.EnvVar{
+				Name: name,
+				ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: selector[0],
+						},
+						Key: selector[1],
+					},
+				},
+			})
+		} else {
+			h.Logger.Info("unable to parse configmapkeyref %s with value of \"%s\"", name, value)
+		}
+	}
+
+	secretKeyRefs := AnnotationsWithPrefix(pod.Annotations, TelegrafEnvSecretKeyRefPrefix)
+	for name, value := range secretKeyRefs {
+		selector := strings.SplitN(value, ".", 2)
+		if len(selector) == 2 {
+			baseContainer.Env = append(baseContainer.Env, corev1.EnvVar{
+				Name: name,
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: selector[0],
+						},
+						Key: selector[1],
+					},
+				},
+			})
+		} else {
+			h.Logger.Info("unable to parse secretkeyref %s with value of \"%s\"", name, value)
+		}
+	}
 	return baseContainer, nil
+}
+
+func AnnotationsWithPrefix(annotations map[string]string, prefix string) map[string]string {
+	filtered := make(map[string]string)
+	for k, v := range annotations {
+		if strings.HasPrefix(k, prefix) {
+			filtered[strings.TrimPrefix(k, prefix)] = v
+		}
+	}
+	return filtered
 }
 
 func (h *sidecarHandler) newIstioContainer(pod *corev1.Pod, containerName string) (corev1.Container, error) {

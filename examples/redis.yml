@@ -17,6 +17,7 @@ spec:
           [[inputs.redis]]
             servers = ["tcp://localhost:6379"]
         telegraf.influxdata.com/class: app
+        telegraf.influxdata.com/env-fieldref-NAMESPACE: metadata.namespace
         telegraf.influxdata.com/limits-cpu: '750m'
         # invalid memory limit, which will be ignored
         telegraf.influxdata.com/limits-memory: '800x'
