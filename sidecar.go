@@ -45,14 +45,14 @@ const (
 	TelegrafClass = "telegraf.influxdata.com/class"
 	// TelegrafSecretEnv allows adding secrets to the telegraf sidecar in the form of environment variables
 	TelegrafSecretEnv = "telegraf.influxdata.com/secret-env"
-	// TelegrafEnvFieldRef allows adding fieldref references to the telegraf sidecar in the form of an environment variable
-	TelegrafEnvFieldRef = "telegraf.influxdata.com/env-fieldref-"
-	// TelegrafEnvConfigMapKeyRef allows adding configmap key references to the telegraf sidecar in the form of an environment variable
-	TelegrafEnvConfigMapKeyRef = "telegraf.influxdata.com/env-configmapkeyref-"
-	// TelegrafEnvSecretKeyRef allows adding secret key references to the telegraf sidecar in the form of an environment variable
-	TelegrafEnvSecretKeyRef = "telegraf.influxdata.com/env-secretkeyref-"
-	// TelegrafEnvLiteral allows adding a literal to the telegraf sidecar in the form of an environment variable
-	TelegrafEnvLiteral = "telegraf.influxdata.com/env-literal-"
+	// TelegrafEnvFieldRefPrefix allows adding fieldref references to the telegraf sidecar in the form of an environment variable
+	TelegrafEnvFieldRefPrefix = "telegraf.influxdata.com/env-fieldref-"
+	// TelegrafEnvConfigMapKeyRefPrefix allows adding configmap key references to the telegraf sidecar in the form of an environment variable
+	TelegrafEnvConfigMapKeyRefPrefix = "telegraf.influxdata.com/env-configmapkeyref-"
+	// TelegrafEnvSecretKeyRefPrefix allows adding secret key references to the telegraf sidecar in the form of an environment variable
+	TelegrafEnvSecretKeyRefPrefix = "telegraf.influxdata.com/env-secretkeyref-"
+	// TelegrafEnvLiteralPrefix allows adding a literal to the telegraf sidecar in the form of an environment variable
+	TelegrafEnvLiteralPrefix = "telegraf.influxdata.com/env-literal-"
 	// TelegrafImage allows specifying a custom telegraf image to be used in the sidecar container
 	TelegrafImage = "telegraf.influxdata.com/image"
 	// TelegrafRequestsCPU allows specifying custom CPU resource requests
@@ -426,7 +426,7 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 		}
 	}
 
-	envFieldRef := AnnotationsWithPrefix(pod.Annotations, TelegrafEnvFieldRef)
+	envFieldRef := AnnotationsWithPrefix(pod.Annotations, TelegrafEnvFieldRefPrefix)
 	for name, fieldPath := range envFieldRef {
 		baseContainer.Env = append(baseContainer.Env, corev1.EnvVar{
 			Name: name,
@@ -438,7 +438,7 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 		})
 	}
 
-	literals := AnnotationsWithPrefix(pod.Annotations, TelegrafEnvLiteral)
+	literals := AnnotationsWithPrefix(pod.Annotations, TelegrafEnvLiteralPrefix)
 	for name, value := range literals {
 		baseContainer.Env = append(baseContainer.Env, corev1.EnvVar{
 			Name:  name,
@@ -446,36 +446,40 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 		})
 	}
 
-	configMapKeyRefs := AnnotationsWithPrefix(pod.Annotations, TelegrafEnvConfigMapKeyRef)
+	configMapKeyRefs := AnnotationsWithPrefix(pod.Annotations, TelegrafEnvConfigMapKeyRefPrefix)
 	for name, value := range configMapKeyRefs {
 		selector := strings.SplitN(value, ".", 2)
-		baseContainer.Env = append(baseContainer.Env, corev1.EnvVar{
-			Name: name,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: selector[0],
+		if len(selector) == 2 {
+			baseContainer.Env = append(baseContainer.Env, corev1.EnvVar{
+				Name: name,
+				ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: selector[0],
+						},
+						Key: selector[1],
 					},
-					Key: selector[1],
 				},
-			},
-		})
+			})
+		}
 	}
 
-	secretKeyRefs := AnnotationsWithPrefix(pod.Annotations, TelegrafEnvSecretKeyRef)
+	secretKeyRefs := AnnotationsWithPrefix(pod.Annotations, TelegrafEnvSecretKeyRefPrefix)
 	for name, value := range secretKeyRefs {
 		selector := strings.SplitN(value, ".", 2)
-		baseContainer.Env = append(baseContainer.Env, corev1.EnvVar{
-			Name: name,
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: selector[0],
+		if len(selector) == 2 {
+			baseContainer.Env = append(baseContainer.Env, corev1.EnvVar{
+				Name: name,
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: selector[0],
+						},
+						Key: selector[1],
 					},
-					Key: selector[1],
 				},
-			},
-		})
+			})
+		}
 	}
 	return baseContainer, nil
 }

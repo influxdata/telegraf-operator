@@ -961,7 +961,7 @@ status: {}
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						TelegrafEnvFieldRef + "NAMESPACE": "metadata.namespace",
+						TelegrafEnvFieldRefPrefix + "NAMESPACE": "metadata.namespace",
 					},
 				},
 			},
@@ -1010,7 +1010,7 @@ status: {}
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						TelegrafEnvLiteral + "STACK_VERSION": "1.0",
+						TelegrafEnvLiteralPrefix + "STACK_VERSION": "1.0",
 					},
 				},
 			},
@@ -1057,7 +1057,7 @@ status: {}
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						TelegrafEnvConfigMapKeyRef + "VERSION": "configmap-name.application.version",
+						TelegrafEnvConfigMapKeyRefPrefix + "VERSION": "configmap-name.application.version",
 					},
 				},
 			},
@@ -1107,7 +1107,7 @@ status: {}
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						TelegrafEnvSecretKeyRef + "PASSWORD": "app-secret.user.password",
+						TelegrafEnvSecretKeyRefPrefix + "PASSWORD": "app-secret.user.password",
 					},
 				},
 			},
