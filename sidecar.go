@@ -65,6 +65,10 @@ const (
 	TelegrafLimitsMemory = "telegraf.influxdata.com/limits-memory"
 	telegrafSecretInfix  = "config"
 
+	// TelegrafShareVolume
+	TelegrafSharedVolume     = "telegraf.influxdata.com/shared-volume"
+	TelegrafSharedVolumePath = "telegraf.influxdata.com/shared-volume-path"
+
 	TelegrafSecretAnnotationKey   = "app.kubernetes.io/managed-by"
 	TelegrafSecretAnnotationValue = "telegraf-operator"
 	TelegrafSecretDataKey         = "telegraf.conf"
@@ -331,6 +335,8 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 	var telegrafRequestsMemory string
 	var telegrafLimitsCPU string
 	var telegrafLimitsMemory string
+	var telegrafSharedVolume string
+	var telegrafSharedVolumePath string
 
 	if customTelegrafImage, ok := pod.Annotations[TelegrafImage]; ok {
 		telegrafImage = customTelegrafImage
@@ -358,6 +364,15 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 		telegrafLimitsMemory = h.LimitsMemory
 	}
 
+	// For shared volume
+	if customSharedVolume, ok := pod.Annotations[telegrafSharedVolume]; ok {
+		telegrafSharedVolume = customSharedVolume
+	}
+
+	if customSharedVolumePath, ok := pod.Annotations[telegrafSharedVolumePath]; ok {
+		telegrafSharedVolumePath = customSharedVolumePath
+	}
+
 	var parsedRequestsCPU resource.Quantity
 	var parsedRequestsMemory resource.Quantity
 	var parsedLimitsCPU resource.Quantity
@@ -378,7 +393,25 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 		return corev1.Container{}, err
 	}
 
+	if telegrafSharedVolume != "" && telegrafSharedVolumePath == "" {
+		return corev1.Container{}, err
+	}
+
 	telegrafContainerCommand := createTelegrafCommand(h.TelegrafWatchConfig)
+
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      fmt.Sprintf("%s-config", containerName),
+			MountPath: "/etc/telegraf",
+		},
+	}
+
+	if telegrafSharedVolume != "" {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      telegrafSharedVolume,
+			MountPath: telegrafSharedVolumePath,
+		})
+	}
 
 	baseContainer := corev1.Container{
 		Name:    containerName,
@@ -405,12 +438,7 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 			},
 		},
 
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      fmt.Sprintf("%s-config", containerName),
-				MountPath: "/etc/telegraf",
-			},
-		},
+		VolumeMounts: volumeMounts,
 	}
 
 	if secretEnv, ok := pod.Annotations[TelegrafSecretEnv]; ok {
@@ -503,7 +531,18 @@ func (h *sidecarHandler) newIstioContainer(pod *corev1.Pod, containerName string
 	var parsedRequestsMemory resource.Quantity
 	var parsedLimitsCPU resource.Quantity
 	var parsedLimitsMemory resource.Quantity
+
+	var telegrafSharedVolume string
+	var telegrafSharedVolumePath string
 	var err error
+
+	if customSharedVolume, ok := pod.Annotations[telegrafSharedVolume]; ok {
+		telegrafSharedVolume = customSharedVolume
+	}
+
+	if customSharedVolumePath, ok := pod.Annotations[telegrafSharedVolumePath]; ok {
+		telegrafSharedVolumePath = customSharedVolumePath
+	}
 
 	if parsedRequestsCPU, err = resource.ParseQuantity(h.RequestsCPU); err != nil {
 		return corev1.Container{}, err
@@ -519,12 +558,30 @@ func (h *sidecarHandler) newIstioContainer(pod *corev1.Pod, containerName string
 		return corev1.Container{}, err
 	}
 
+	if telegrafSharedVolume != "" && telegrafSharedVolumePath == "" {
+		return corev1.Container{}, err
+	}
+
 	telegrafImage := h.IstioTelegrafImage
 	if telegrafImage == "" {
 		telegrafImage = h.TelegrafImage
 	}
 
 	telegrafContainerCommand := createTelegrafCommand(h.IstioTelegrafWatchConfig)
+
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      fmt.Sprintf("%s-config", containerName),
+			MountPath: "/etc/telegraf",
+		},
+	}
+
+	if telegrafSharedVolume != "" {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      telegrafSharedVolume,
+			MountPath: telegrafSharedVolumePath,
+		})
+	}
 
 	baseContainer := corev1.Container{
 		Name:    containerName,
@@ -551,12 +608,7 @@ func (h *sidecarHandler) newIstioContainer(pod *corev1.Pod, containerName string
 			},
 		},
 
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      fmt.Sprintf("%s-config", containerName),
-				MountPath: "/etc/telegraf",
-			},
-		},
+		VolumeMounts: volumeMounts,
 	}
 
 	return baseContainer, nil
