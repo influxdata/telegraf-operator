@@ -367,11 +367,11 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 	}
 
 	// For shared volume
-	if customSharedVolume, ok := pod.Annotations[telegrafSharedVolume]; ok {
+	if customSharedVolume, ok := pod.Annotations[TelegrafSharedVolume]; ok {
 		telegrafSharedVolume = customSharedVolume
 	}
 
-	if customSharedVolumePath, ok := pod.Annotations[telegrafSharedVolumePath]; ok {
+	if customSharedVolumePath, ok := pod.Annotations[TelegrafSharedVolumePath]; ok {
 		telegrafSharedVolumePath = customSharedVolumePath
 	}
 
@@ -538,11 +538,11 @@ func (h *sidecarHandler) newIstioContainer(pod *corev1.Pod, containerName string
 	var telegrafSharedVolumePath string
 	var err error
 
-	if customSharedVolume, ok := pod.Annotations[telegrafSharedVolume]; ok {
+	if customSharedVolume, ok := pod.Annotations[TelegrafSharedVolume]; ok {
 		telegrafSharedVolume = customSharedVolume
 	}
 
-	if customSharedVolumePath, ok := pod.Annotations[telegrafSharedVolumePath]; ok {
+	if customSharedVolumePath, ok := pod.Annotations[TelegrafSharedVolumePath]; ok {
 		telegrafSharedVolumePath = customSharedVolumePath
 	}
 
