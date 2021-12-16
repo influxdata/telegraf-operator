@@ -92,6 +92,8 @@ type sidecarHandler struct {
 	IstioOutputClass            string
 	IstioTelegrafImage          string
 	IstioTelegrafWatchConfig    string
+	SharedVolumeName            string
+	SharedVolumePath            string
 }
 
 type sidecarHandlerResponse struct {

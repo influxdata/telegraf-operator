@@ -69,6 +69,9 @@ func main() {
 	var istioTelegrafWatchConfig string
 	var requireAnnotationsForSecret bool
 
+	var telegrafSharedVolume string
+	var telegrafSharedVolumePath string
+
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
@@ -89,6 +92,10 @@ func main() {
 	flag.StringVar(&istioOutputClass, "istio-output-class", "istio", "Class to use for adding telegraf-istio sidecar to monitor its sidecar")
 	flag.StringVar(&istioTelegrafImage, "istio-telegraf-image", "", "If specified, use a custom image for telegraf-istio sidecar")
 	flag.StringVar(&istioTelegrafWatchConfig, "istio-telegraf-watch-config", "", "Optional setting to use for telegraf to watch for changes in configuration")
+
+	flag.StringVar(&telegrafSharedVolume, "telegraf-shared-volume", "", "Enable shared volume emptyDir")
+	flag.StringVar(&telegrafSharedVolumePath, "telegraf-shared-volume-path", "", "Enable shared volume mount path")
+
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(func(o *zap.Options) {
@@ -140,6 +147,8 @@ func main() {
 		RequestsMemory:              telegrafRequestsMemory,
 		LimitsCPU:                   telegrafLimitsCPU,
 		LimitsMemory:                telegrafLimitsMemory,
+		SharedVolumeName:            telegrafSharedVolume,
+		SharedVolumePath:            telegrafSharedVolumePath,
 	}
 
 	err = sidecar.validateRequestsAndLimits()
