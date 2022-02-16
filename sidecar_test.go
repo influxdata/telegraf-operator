@@ -277,6 +277,46 @@ func Test_assembleConf(t *testing.T) {
 [[inputs.internal]]
 `,
 		},
+		{
+			name: "handle global_tags",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafGlobalTagLiteralPrefix + "foo": "bar",
+					},
+				},
+			},
+			wantConfig: `[global_tags]
+  foo = "bar"`,
+		},
+		{
+			name: "handle global_tags multiple",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafGlobalTagLiteralPrefix + "foo": "bar",
+						TelegrafGlobalTagLiteralPrefix + "baz": "quz",
+					},
+				},
+			},
+			wantConfig: `[global_tags]
+  baz = "quz"
+  foo = "bar"`,
+		},
+		{
+			name: "handle global_tags existing",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafRawInput:                       "[global_tags]\n  a = \"b\"",
+						TelegrafGlobalTagLiteralPrefix + "foo": "bar",
+					},
+				},
+			},
+			wantConfig: `[global_tags]
+  foo = "bar"
+  a = "b"`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
