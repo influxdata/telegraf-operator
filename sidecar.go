@@ -53,6 +53,8 @@ const (
 	TelegrafEnvSecretKeyRefPrefix = "telegraf.influxdata.com/env-secretkeyref-"
 	// TelegrafEnvLiteralPrefix allows adding a literal to the telegraf sidecar in the form of an environment variable
 	TelegrafEnvLiteralPrefix = "telegraf.influxdata.com/env-literal-"
+	// TelegrafGlobalTagLiteralPrefix allows adding a literal global tag to the telegraf sidecar config
+	TelegrafGlobalTagLiteralPrefix = "telegraf.influxdata.com/global-tag-literal-"
 	// TelegrafImage allows specifying a custom telegraf image to be used in the sidecar container
 	TelegrafImage = "telegraf.influxdata.com/image"
 	// TelegrafRequestsCPU allows specifying custom CPU resource requests
@@ -272,6 +274,33 @@ func (h *sidecarHandler) assembleConf(pod *corev1.Pod, className string) (telegr
 		telegrafConf = fmt.Sprintf("%s\n%s", telegrafConf, inputsRaw)
 	}
 	telegrafConf = fmt.Sprintf("%s\n%s", telegrafConf, classData)
+
+	type keyValue struct{ key, value string }
+	var globalTags []keyValue
+	for key, value := range pod.Annotations {
+		if strings.HasPrefix(key, TelegrafGlobalTagLiteralPrefix) {
+			globalTags = append(globalTags, keyValue{strings.TrimPrefix(key, TelegrafGlobalTagLiteralPrefix), value})
+		}
+	}
+	// Go maps aren't ordered; we want a stable config output, to simplify tests among other things
+	sort.Slice(globalTags, func(i, j int) bool { return globalTags[i].key < globalTags[j].key })
+
+	if len(globalTags) > 0 {
+		globalTagsText := "[global_tags]\n"
+		for _, i := range globalTags {
+			globalTagsText = fmt.Sprintf("%s  %s = %q\n", globalTagsText, i.key, i.value)
+		}
+
+		// inject globalTagsText at the top of an existing "[global_tags]" section
+		// or create one.
+		// Edge case / caveat: This doesn't handle when the class config file starts with "[global_tags]
+		// TODO(mkm): yak shave: change this whole method to manipulate a real toml instead of fiddling with strings.
+		//            currently blocked on inability of github.com/influxdata/toml to render the AST back to string.
+		if !strings.Contains(telegrafConf, "[global_tags]\n") {
+			telegrafConf = fmt.Sprintf("%s\n%s", telegrafConf, "[global_tags]\n")
+		}
+		telegrafConf = strings.ReplaceAll(telegrafConf, "[global_tags]\n", globalTagsText)
+	}
 
 	if _, err := toml.Parse([]byte(telegrafConf)); err != nil {
 		return "", fmt.Errorf("resulting Telegraf is not a valid file: %v", err)
