@@ -132,6 +132,16 @@ func Test_validateRequestsAndLimits(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "validate empty values are accepted",
+			sidecar: &sidecarHandler{
+				RequestsCPU:    "",
+				RequestsMemory: "",
+				LimitsCPU:      "",
+				LimitsMemory:   "",
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {

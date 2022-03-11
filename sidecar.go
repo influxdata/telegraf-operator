@@ -134,18 +134,14 @@ func (h *sidecarHandler) shouldAddIstioTelegrafSidecar(pod *corev1.Pod) bool {
 	return false
 }
 
-func (h *sidecarHandler) validateRequestsAndLimits() error {
-	if _, err := resource.ParseQuantity(h.RequestsCPU); err != nil {
-		return err
-	}
-	if _, err := resource.ParseQuantity(h.RequestsMemory); err != nil {
-		return err
-	}
-	if _, err := resource.ParseQuantity(h.LimitsCPU); err != nil {
-		return err
-	}
-	if _, err := resource.ParseQuantity(h.LimitsMemory); err != nil {
-		return err
+func (h *sidecarHandler) validateRequestsAndLimits() (err error) {
+	for _, value := range []string{h.RequestsCPU, h.RequestsMemory, h.LimitsCPU, h.LimitsMemory} {
+		if value != "" {
+			_, err = resource.ParseQuantity(value)
+			if err != nil {
+				return
+			}
+		}
 	}
 
 	return nil
@@ -354,6 +350,10 @@ func (h *sidecarHandler) parseCustomOrDefaultQuantity(result corev1.ResourceList
 	var quantity resource.Quantity
 	if quantity, err = resource.ParseQuantity(customQuantity); err != nil {
 		h.Logger.Info(fmt.Sprintf("unable to parse resource \"%s\": %v", customQuantity, err))
+
+		if defaultQuantity == "" {
+			return nil
+		}
 		quantity, err = resource.ParseQuantity(defaultQuantity)
 	}
 
