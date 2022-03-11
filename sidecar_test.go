@@ -1192,6 +1192,53 @@ status: {}
       `,
 			wantSecrets: []string{testEmptySecret},
 		},
+		{
+			name: "validate empty resource requests",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafClass:          "default",
+						TelegrafRequestsCPU:    "",
+						TelegrafRequestsMemory: "",
+						TelegrafLimitsCPU:      "",
+						TelegrafLimitsMemory:   "",
+					},
+				},
+			},
+			wantPod: `
+metadata:
+  annotations:
+    telegraf.influxdata.com/class: default
+    telegraf.influxdata.com/limits-cpu: ""
+    telegraf.influxdata.com/limits-memory: ""
+    telegraf.influxdata.com/requests-cpu: ""
+    telegraf.influxdata.com/requests-memory: ""
+  creationTimestamp: null
+spec:
+  containers:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    image: docker.io/library/telegraf:1.19
+    name: telegraf
+    resources: {}
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-config
+  volumes:
+  - name: telegraf-config
+    secret:
+      secretName: telegraf-config-myname
+status: {}
+      `,
+			wantSecrets: []string{testEmptySecret},
+		},
 	}
 
 	for _, tt := range tests {

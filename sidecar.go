@@ -344,14 +344,25 @@ func (h *sidecarHandler) newVolume(name, containerName string) corev1.Volume {
 	}
 }
 
-// parseCustomOrDefaultQuantity parses custom quantity from annotations,
+// parseCustomOrDefaultQuantity parses custom quantity from annotations, storing it in provided ResourceList as resourceName,
 // defaulting to quantity specified to the handler if the custom one is not valid
-func (h *sidecarHandler) parseCustomOrDefaultQuantity(customQuantity string, defaultQuantity string) (quantity resource.Quantity, err error) {
+func (h *sidecarHandler) parseCustomOrDefaultQuantity(result corev1.ResourceList, resourceName corev1.ResourceName, customQuantity string, defaultQuantity string) (err error) {
+	// if default or current value is an empty string, do not set value
+	if customQuantity == "" {
+		return nil
+	}
+	var quantity resource.Quantity
 	if quantity, err = resource.ParseQuantity(customQuantity); err != nil {
 		h.Logger.Info(fmt.Sprintf("unable to parse resource \"%s\": %v", customQuantity, err))
 		quantity, err = resource.ParseQuantity(defaultQuantity)
 	}
-	return quantity, err
+
+	if err != nil {
+		return err
+	}
+
+	result[resourceName] = quantity
+	return nil
 }
 
 func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (corev1.Container, error) {
@@ -387,23 +398,20 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 		telegrafLimitsMemory = h.LimitsMemory
 	}
 
-	var parsedRequestsCPU resource.Quantity
-	var parsedRequestsMemory resource.Quantity
-	var parsedLimitsCPU resource.Quantity
-	var parsedLimitsMemory resource.Quantity
-	var err error
+	resourceRequests := corev1.ResourceList{}
+	resourceLimits := corev1.ResourceList{}
 
-	if parsedRequestsCPU, err = h.parseCustomOrDefaultQuantity(telegrafRequestsCPU, h.RequestsCPU); err != nil {
+	if err := h.parseCustomOrDefaultQuantity(resourceRequests, "cpu", telegrafRequestsCPU, h.RequestsCPU); err != nil {
 		return corev1.Container{}, err
 	}
-	if parsedRequestsMemory, err = h.parseCustomOrDefaultQuantity(telegrafRequestsMemory, h.RequestsMemory); err != nil {
+	if err := h.parseCustomOrDefaultQuantity(resourceRequests, "memory", telegrafRequestsMemory, h.RequestsMemory); err != nil {
 		return corev1.Container{}, err
 	}
 
-	if parsedLimitsCPU, err = h.parseCustomOrDefaultQuantity(telegrafLimitsCPU, h.LimitsCPU); err != nil {
+	if err := h.parseCustomOrDefaultQuantity(resourceLimits, "cpu", telegrafLimitsCPU, h.LimitsCPU); err != nil {
 		return corev1.Container{}, err
 	}
-	if parsedLimitsMemory, err = h.parseCustomOrDefaultQuantity(telegrafLimitsMemory, h.LimitsMemory); err != nil {
+	if err := h.parseCustomOrDefaultQuantity(resourceLimits, "memory", telegrafLimitsMemory, h.LimitsMemory); err != nil {
 		return corev1.Container{}, err
 	}
 
@@ -414,14 +422,8 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 		Image:   telegrafImage,
 		Command: telegrafContainerCommand,
 		Resources: corev1.ResourceRequirements{
-			Limits: corev1.ResourceList{
-				"cpu":    parsedLimitsCPU,
-				"memory": parsedLimitsMemory,
-			},
-			Requests: corev1.ResourceList{
-				"cpu":    parsedRequestsCPU,
-				"memory": parsedRequestsMemory,
-			},
+			Requests: resourceRequests,
+			Limits:   resourceLimits,
 		},
 		Env: []corev1.EnvVar{
 			{
