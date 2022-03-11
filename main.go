@@ -55,6 +55,7 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var telegrafClassesDirectory string
+	var certDir string
 	var defaultTelegrafClass string
 	var telegrafImage string
 	var telegrafWatchConfig string
@@ -77,6 +78,7 @@ func main() {
 	flag.BoolVar(&requireAnnotationsForSecret, "require-annotations-for-secret", false,
 		"Require the annotations to be present when updating a secret")
 	flag.StringVar(&telegrafClassesDirectory, "telegraf-classes-directory", "/config/classes", "The name of the directory in which the telegraf classes are configured")
+	flag.StringVar(&certDir, "cert-dir", "/etc/certs", "The name of the directory where certificates for webhook are stored")
 	flag.StringVar(&defaultTelegrafClass, "telegraf-default-class", "default", "Default telegraf class to use")
 	flag.StringVar(&telegrafImage, "telegraf-image", defaultTelegrafImage, "Telegraf image to inject")
 	flag.StringVar(&telegrafWatchConfig, "telegraf-watch-config", "", "Optional setting to use for telegraf to watch for changes in configuration")
@@ -100,7 +102,7 @@ func main() {
 		MetricsBindAddress: metricsAddr,
 		LeaderElection:     enableLeaderElection,
 		Port:               9443,
-		CertDir:            "/etc/certs",
+		CertDir:            certDir,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
