@@ -35,8 +35,8 @@ const (
 	TelegrafMetricsPath = "telegraf.influxdata.com/path"
 	// TelegrafMetricsScheme is used to configure at the scheme for the metrics to scrape, will apply to all ports if multiple are configured
 	TelegrafMetricsScheme = "telegraf.influxdata.com/scheme"
-	// TelegrafMetricsVersion is used to configure which metrics parsing version to use (1, 2)
-	TelegrafMetricsVersion = "telegraf.influxdata.com/version"
+	// TelegrafMetricVersion is used to configure which metrics parsing version to use (1, 2)
+	TelegrafMetricVersion = "telegraf.influxdata.com/metric-version"
 	// TelegrafInterval is used to configure interval for telegraf (Go style duration, e.g 5s, 30s, 2m .. )
 	TelegrafInterval = "telegraf.influxdata.com/interval"
 	// TelegrafRawInput is used to configure custom inputs for telegraf
@@ -248,7 +248,7 @@ func (h *sidecarHandler) assembleConf(pod *corev1.Pod, className string) (telegr
 			intervalConfig = fmt.Sprintf("interval = \"%s\"", intervalRaw)
 		}
 		versionConfig := ""
-		if versionRaw, ok := pod.Annotations[TelegrafMetricsVersion]; ok {
+		if versionRaw, ok := pod.Annotations[TelegrafMetricVersion]; ok {
 			versionConfig = fmt.Sprintf("metric_version = %s", versionRaw)
 		}
 		urls := []string{}

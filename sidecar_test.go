@@ -233,7 +233,7 @@ func Test_assembleConf(t *testing.T) {
 						TelegrafInterval:       "10s",
 						TelegrafMetricsPorts:   "6060,8086",
 						TelegrafEnableInternal: "true",
-						TelegrafMetricsVersion: "2",
+						TelegrafMetricVersion:  "2",
 					},
 				},
 			},
@@ -252,8 +252,8 @@ func Test_assembleConf(t *testing.T) {
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						TelegrafMetricsPorts:   "6060",
-						TelegrafMetricsVersion: "2",
+						TelegrafMetricsPorts:  "6060",
+						TelegrafMetricVersion: "2",
 					},
 				},
 			},
