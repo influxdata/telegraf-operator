@@ -35,6 +35,8 @@ const (
 	TelegrafMetricsPath = "telegraf.influxdata.com/path"
 	// TelegrafMetricsScheme is used to configure at the scheme for the metrics to scrape, will apply to all ports if multiple are configured
 	TelegrafMetricsScheme = "telegraf.influxdata.com/scheme"
+	// TelegrafMetricsVersion is used to configure which metrics parsing version to use (1, 2)
+	TelegrafMetricsVersion = "telegraf.influxdata.com/version"
 	// TelegrafInterval is used to configure interval for telegraf (Go style duration, e.g 5s, 30s, 2m .. )
 	TelegrafInterval = "telegraf.influxdata.com/interval"
 	// TelegrafRawInput is used to configure custom inputs for telegraf
@@ -245,12 +247,16 @@ func (h *sidecarHandler) assembleConf(pod *corev1.Pod, className string) (telegr
 		if ok {
 			intervalConfig = fmt.Sprintf("interval = \"%s\"", intervalRaw)
 		}
+		versionConfig := ""
+		if versionRaw, ok := pod.Annotations[TelegrafMetricsVersion]; ok {
+			versionConfig = fmt.Sprintf("metric_version = %s", versionRaw)
+		}
 		urls := []string{}
 		for _, port := range ports {
 			urls = append(urls, fmt.Sprintf("%s://127.0.0.1:%s%s", scheme, port, path))
 		}
 		if len(urls) != 0 {
-			telegrafConf = fmt.Sprintf("%s\n%s", telegrafConf, fmt.Sprintf("[[inputs.prometheus]]\n  urls = [\"%s\"]\n  %s\n", strings.Join(urls, `", "`), intervalConfig))
+			telegrafConf = fmt.Sprintf("%s\n%s", telegrafConf, fmt.Sprintf("[[inputs.prometheus]]\n  urls = [\"%s\"]\n  %s\n  %s\n", strings.Join(urls, `", "`), intervalConfig, versionConfig))
 		}
 	}
 	enableInternal := h.EnableDefaultInternalPlugin

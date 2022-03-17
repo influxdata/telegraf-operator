@@ -181,6 +181,7 @@ func Test_assembleConf(t *testing.T) {
 [[inputs.prometheus]]
   urls = ["http://127.0.0.1:6060/metrics"]
   
+  
 
 `,
 		},
@@ -196,6 +197,7 @@ func Test_assembleConf(t *testing.T) {
 			wantConfig: `
 [[inputs.prometheus]]
   urls = ["http://127.0.0.1:6060/metrics", "http://127.0.0.1:8086/metrics"]
+  
   
 
 `,
@@ -215,6 +217,7 @@ func Test_assembleConf(t *testing.T) {
 [[inputs.prometheus]]
   urls = ["http://127.0.0.1:6060/metrics"]
   
+  
 
 [global_tags]
   dc = "us-east-1"
@@ -230,6 +233,7 @@ func Test_assembleConf(t *testing.T) {
 						TelegrafInterval:       "10s",
 						TelegrafMetricsPorts:   "6060,8086",
 						TelegrafEnableInternal: "true",
+						TelegrafMetricsVersion: "2",
 					},
 				},
 			},
@@ -237,8 +241,27 @@ func Test_assembleConf(t *testing.T) {
 [[inputs.prometheus]]
   urls = ["https://127.0.0.1:6060/metrics/usage", "https://127.0.0.1:8086/metrics/usage"]
   interval = "10s"
+  metric_version = 2
 
 [[inputs.internal]]
+
+`,
+		},
+		{
+			name: "default prometheus settings with version, no interval",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafMetricsPorts:   "6060",
+						TelegrafMetricsVersion: "2",
+					},
+				},
+			},
+			wantConfig: `
+[[inputs.prometheus]]
+  urls = ["http://127.0.0.1:6060/metrics"]
+  
+  metric_version = 2
 
 `,
 		},
@@ -386,7 +409,7 @@ metadata:
   name: telegraf-config-myname
   namespace: mynamespace
 stringData:
-  telegraf.conf: "\n[[inputs.prometheus]]\n  urls = [\"http://127.0.0.1:6060/metrics\"]\n  \n\n"
+  telegraf.conf: "\n[[inputs.prometheus]]\n  urls = [\"http://127.0.0.1:6060/metrics\"]\n  \n  \n\n"
 type: Opaque`,
 			},
 		},

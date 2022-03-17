@@ -154,6 +154,7 @@ Users can configure the `inputs.prometheus` plugin by setting the following anno
 - `telegraf.influxdata.com/path` : is used to configure at which path to configure scraping to (a port must be configured also), will apply to all ports if multiple are configured
 - `telegraf.influxdata.com/scheme` : is used to configure at the scheme for the metrics to scrape, will apply to all ports if multiple are configured ( only `http` or `https` are allowed as values)
 - `telegraf.influxdata.com/interval` : is used to configure interval for telegraf scraping (Go style duration, e.g 5s, 30s, 2m .. )
+- `telegraf.influxdata.com/version` : is used to configure which metrics parsing version to use (1, 2)
 
 ### Example Prometheus Scraping
 
