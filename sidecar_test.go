@@ -266,6 +266,18 @@ func Test_assembleConf(t *testing.T) {
 `,
 		},
 		{
+			name: "invalid metric_version value",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafMetricsPorts:  "6060",
+						TelegrafMetricVersion: "invalid",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
 			name: "valid TOML syntax",
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{

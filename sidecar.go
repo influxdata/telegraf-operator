@@ -247,10 +247,17 @@ func (h *sidecarHandler) assembleConf(pod *corev1.Pod, className string) (telegr
 		if ok {
 			intervalConfig = fmt.Sprintf("interval = \"%s\"", intervalRaw)
 		}
+
 		versionConfig := ""
 		if versionRaw, ok := pod.Annotations[TelegrafMetricVersion]; ok {
-			versionConfig = fmt.Sprintf("metric_version = %s", versionRaw)
+			version, err := strconv.ParseInt(versionRaw, 10, 0)
+			if err != nil {
+				return "", fmt.Errorf("value supplied for %s must be a number, %s given", TelegrafMetricVersion, versionRaw)
+			}
+
+			versionConfig = fmt.Sprintf("metric_version = %d", version)
 		}
+
 		urls := []string{}
 		for _, port := range ports {
 			urls = append(urls, fmt.Sprintf("%s://127.0.0.1:%s%s", scheme, port, path))
