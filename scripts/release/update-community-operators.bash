@@ -10,9 +10,9 @@ OPERATOR_PATH="operators/telegraf-operator"
 
 main() {
   local version="${1:?Version required}"
-  local branch="${2:-telegraf-operator-v$(echo "${version}" | sed 's#\.#-#g')}"
+  local branch="${2:-telegraf-operator-v${version//./-}}"
   local dir="${OPERATOR_PATH}/${version}"
-  local hygendir="$(pwd)"
+  local hygendir="${PWD}"
 
   if [ ! -d "${COMMUNITY_OPERATORS_PATH}/${OPERATOR_PATH}" ] ; then
     echo >&2 "Unable to find ${COMMUNITY_OPERATORS_PATH}/${OPERATOR_PATH}; exiting..."
@@ -25,7 +25,7 @@ main() {
     exit 1
   fi
 
-  if [ ! -z "$(git status --porcelain)" ]; then
+  if [ -n "$(git status --porcelain)" ]; then
     echo "community-operators repo at $(pwd) has local changes"
     exit 1
   fi

@@ -10,7 +10,7 @@ CHARTS_FILE="charts/telegraf-operator/Chart.yaml"
 
 main() {
   local version="${1:?Version required}"
-  local branch="${2:-telegraf-operator-v$(echo "${version}" | sed 's#\.#-#g')}"
+  local branch="${2:-telegraf-operator-v${version//./-}}"
 
   if [ ! -f "${HELM_CHARTS_PATH}/${CHARTS_FILE}" ] ; then
     echo >&2 "Unable to find ${HELM_CHARTS_PATH}/${CHARTS_FILE}; exiting..."
@@ -32,10 +32,10 @@ main() {
   git checkout -b "${branch}"
 
   sed -E "s/^([[:space:]]*version:[[:space:]]*)[0-9].*\$/\1${version}/" \
-    -i "${CHARTS_FILE}"
+    -i '' "${CHARTS_FILE}"
 
   sed -E "s/^([[:space:]]*version:[[:space:]]*)[0-9].*\$/\1${version}/" \
-    -i "${CHARTS_FILE}"
+    -i '' "${CHARTS_FILE}"
 
   git commit -m "Update telegraf-operator to ${version}" "${CHARTS_FILE}"
 }

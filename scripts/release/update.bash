@@ -5,7 +5,7 @@ set -eu -o pipefail
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd "$DIR/../.."
 
-HELM_CHARTS_PATH="$(pwd)/helm-charts"
+HELM_CHARTS_PATH="${PWD}/helm-charts"
 
 main() {
   local version="${1:?Version required}"
