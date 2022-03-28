@@ -33,12 +33,12 @@ main() {
 
   # use a temporary file for updating version to
   # ensure consistency between Linux and macOS
+  trap "rm -f \"${CHARTS_FILE}.tmp\"" INT TERM EXIT
   cat <"${CHARTS_FILE}" >"${CHARTS_FILE}.tmp"
   cat <"${CHARTS_FILE}.tmp" | \
     sed -E "s/^([[:space:]]*version:[[:space:]]*)[0-9].*\$/\1${version}/" | \
     sed -E "s/^([[:space:]]*appVersion:[[:space:]]*v)[0-9].*\$/\1${version}/" \
     >"${CHARTS_FILE}"
-  rm -f "${CHARTS_FILE}.tmp"
 
   git commit -m "Update telegraf-operator to ${version}" "${CHARTS_FILE}"
 }
