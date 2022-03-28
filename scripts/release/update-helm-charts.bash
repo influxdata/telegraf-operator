@@ -19,12 +19,12 @@ main() {
 
   cd "${HELM_CHARTS_PATH}"
   if [ "$(git rev-parse --abbrev-ref HEAD)" != "master" ] ; then
-    echo "helm-charts repo at $(pwd) must be checked out as \"master\""
+    echo >&2 "helm-charts repo at $(pwd) must be checked out as \"master\""
     exit 1
   fi
 
   if [ ! -z "$(git status --porcelain)" ]; then
-    echo "helm-charts repo at $(pwd) has local changes"
+    echo >&2 "helm-charts repo at $(pwd) has local changes"
     exit 1
   fi
 
@@ -32,10 +32,10 @@ main() {
   git checkout -b "${branch}"
 
   sed -E "s/^([[:space:]]*version:[[:space:]]*)[0-9].*\$/\1${version}/" \
-    -i '' "${CHARTS_FILE}"
+    -i "${CHARTS_FILE}"
 
   sed -E "s/^([[:space:]]*version:[[:space:]]*)[0-9].*\$/\1${version}/" \
-    -i '' "${CHARTS_FILE}"
+    -i "${CHARTS_FILE}"
 
   git commit -m "Update telegraf-operator to ${version}" "${CHARTS_FILE}"
 }

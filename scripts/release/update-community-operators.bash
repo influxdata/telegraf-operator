@@ -21,12 +21,12 @@ main() {
 
   cd "${COMMUNITY_OPERATORS_PATH}"
   if [ "$(git rev-parse --abbrev-ref HEAD)" != "main" ] ; then
-    echo "community-operators repo at $(pwd) must be checked out as \"main\""
+    echo >&2 "community-operators repo at $(pwd) must be checked out as \"main\""
     exit 1
   fi
 
   if [ -n "$(git status --porcelain)" ]; then
-    echo "community-operators repo at $(pwd) has local changes"
+    echo >&2 "community-operators repo at $(pwd) has local changes"
     exit 1
   fi
 
