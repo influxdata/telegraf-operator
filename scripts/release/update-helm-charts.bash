@@ -31,8 +31,9 @@ main() {
   git pull
   git checkout -b "${branch}"
 
+  # use a temporary file for updating version to
+  # ensure consistency between Linux and macOS
   cat <"${CHARTS_FILE}" >"${CHARTS_FILE}.tmp"
-
   cat <"${CHARTS_FILE}.tmp" | \
     sed -E "s/^([[:space:]]*version:[[:space:]]*)[0-9].*\$/\1${version}/" | \
     sed -E "s/^([[:space:]]*appVersion:[[:space:]]*v)[0-9].*\$/\1${version}/" \
