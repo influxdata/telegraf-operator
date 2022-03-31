@@ -63,6 +63,19 @@ spec:
             - secrets
             verbs:
             - '*'
+          - apiGroups:
+            - ""
+            resources:
+            - namespaces
+            verbs:
+            - get
+            - list
+          - apiGroups:
+            - ""
+            resources:
+            - pods
+            verbs:
+            - get
           serviceAccountName: telegraf-operator
       deployments:
         - name: telegraf-operator
