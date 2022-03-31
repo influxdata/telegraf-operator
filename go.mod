@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/go-logr/logr v0.3.0
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/influxdata/toml v0.0.0-20180607005434-2a2e3012f7cf
 	github.com/naoina/go-stringutil v0.1.0 // indirect
 	k8s.io/api v0.20.2
