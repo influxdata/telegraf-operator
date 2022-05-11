@@ -6,7 +6,7 @@
 # The motto
 Easy things should be easy. Adding monitoring to your application has never been as easy as now.
 
-Does your application exposes prometheus metrics? then adding `telegraf.influxdata.com/port: 8080` annotation to the pod is the only thing you need to add telegraf scraping to it
+Does your application exposes prometheus metrics? then adding `telegraf.influxdata.com/port: "8080"` annotation to the pod is the only thing you need to add telegraf scraping to it
 
 # Why telegraf-operator?
 
@@ -156,6 +156,8 @@ Users can configure the `inputs.prometheus` plugin by setting the following anno
 - `telegraf.influxdata.com/interval` : is used to configure interval for telegraf scraping (Go style duration, e.g 5s, 30s, 2m .. )
 - `telegraf.influxdata.com/metric-version` : is used to configure which metrics parsing version to use (1, 2)
 
+**NOTE**: all annotations should be formatted as strings - for example `telegraf.influxdata.com/port: "8080"` or `telegraf.influxdata.com/metric-version: "2"`.
+
 ### Example Prometheus Scraping
 
 ```
@@ -171,7 +173,7 @@ spec:
         telegraf.influxdata.com/path: /metrics
         telegraf.influxdata.com/port: "8086"
         telegraf.influxdata.com/scheme: http
-        telegraf.influxdata.com/metric-version: 2
+        telegraf.influxdata.com/metric-version: "2"
       # ...
     spec:
       containers:
