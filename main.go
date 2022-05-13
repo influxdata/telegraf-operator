@@ -27,7 +27,6 @@ import (
 
 	// +kubebuilder:scaffold:imports
 
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
@@ -38,7 +37,7 @@ var (
 )
 
 const (
-	defaultTelegrafImage  = "docker.io/library/telegraf:1.22.3"
+	defaultTelegrafImage  = "docker.io/library/telegraf:1.22"
 	defaultRequestsCPU    = "10m"
 	defaultRequestsMemory = "10Mi"
 	defaultLimitsCPU      = "200m"

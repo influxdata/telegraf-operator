@@ -450,7 +450,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.22.3
+    image: docker.io/library/telegraf:1.22
     name: telegraf
     resources:
       limits:
@@ -576,7 +576,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.22.3
+    image: docker.io/library/telegraf:1.22
     name: telegraf
     resources:
       limits:
@@ -623,7 +623,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.22.3
+    image: docker.io/library/telegraf:1.22
     name: telegraf
     resources:
       limits:
@@ -670,7 +670,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.22.3
+    image: docker.io/library/telegraf:1.22
     name: telegraf
     resources:
       limits:
@@ -768,7 +768,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.22.3
+    image: docker.io/library/telegraf:1.22
     name: telegraf-istio
     resources:
       limits:
@@ -898,7 +898,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.22.3
+    image: docker.io/library/telegraf:1.22
     name: telegraf
     resources:
       limits:
@@ -919,7 +919,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.22.3
+    image: docker.io/library/telegraf:1.22
     name: telegraf-istio
     resources:
       limits:
@@ -972,7 +972,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.22.3
+    image: docker.io/library/telegraf:1.22
     name: telegraf
     resources:
       limits:
@@ -1021,7 +1021,7 @@ spec:
     - secretRef:
         name: mysecret
         optional: true
-    image: docker.io/library/telegraf:1.22.3
+    image: docker.io/library/telegraf:1.22
     name: telegraf
     resources:
       limits:
@@ -1070,7 +1070,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: metadata.namespace
-    image: docker.io/library/telegraf:1.22.3
+    image: docker.io/library/telegraf:1.22
     name: telegraf
     resources:
       limits:
@@ -1117,7 +1117,7 @@ spec:
           fieldPath: spec.nodeName
     - name: STACK_VERSION
       value: "1.0"
-    image: docker.io/library/telegraf:1.22.3
+    image: docker.io/library/telegraf:1.22
     name: telegraf
     resources:
       limits:
@@ -1167,7 +1167,7 @@ spec:
         configMapKeyRef:
           key: application.version
           name: configmap-name
-    image: docker.io/library/telegraf:1.22.3
+    image: docker.io/library/telegraf:1.22
     name: telegraf
     resources:
       limits:
@@ -1217,7 +1217,7 @@ spec:
         secretKeyRef:
           key: user.password
           name: app-secret
-    image: docker.io/library/telegraf:1.22.3
+    image: docker.io/library/telegraf:1.22
     name: telegraf
     resources:
       limits:
@@ -1270,7 +1270,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
-    image: docker.io/library/telegraf:1.22.3
+    image: docker.io/library/telegraf:1.22
     name: telegraf
     resources: {}
     volumeMounts:
