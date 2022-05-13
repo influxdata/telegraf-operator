@@ -27,6 +27,7 @@ import (
 
 	// +kubebuilder:scaffold:imports
 
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
