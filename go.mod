@@ -8,6 +8,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/influxdata/toml v0.0.0-20180607005434-2a2e3012f7cf
 	github.com/naoina/go-stringutil v0.1.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/api v0.20.2
 	k8s.io/apimachinery v0.20.2
 	k8s.io/apiserver v0.20.1
