@@ -40,7 +40,9 @@ The `certManager.enable` setting will use [`cert-manager`](https://cert-manager.
 
 It is recommended to use a [values file](https://helm.sh/docs/chart_template_guide/values_files/) instead of setting name-values.
 
-It's also recommended to configure the [`classes.data`](https://github.com/influxdata/helm-charts/blob/62b039f/charts/telegraf-operator/values.yaml#L10-L18) values, which specify the telegraf-operator classes and how gathered data should be stored or persisted. For example:
+It's also recommended to configure the [`classes.data`](https://github.com/influxdata/helm-charts/blob/62b039f/charts/telegraf-operator/values.yaml#L10-L18) values, which specify the telegraf-operator classes and how gathered data should be stored or persisted. Classes are described in more details in [Global configuration - classes](#global-configuration---classes) section.
+
+For example:
 
 ```yaml
 classes:
