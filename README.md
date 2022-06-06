@@ -16,11 +16,82 @@ No one likes monitoring/observability, everybody wants to deploy applications bu
 
 Releasing docker images at: [Quay](https://quay.io/repository/influxdb/telegraf-operator?tag=latest&tab=tags)
 
+## Installing telegraf-operator in your Kubernetes cluster
+
+### Helm chart
+
+An up to date version of `telegraf-operator` can be installed by using the [InfluxData Helm Repository](https://helm.influxdata.com/).
+
+Simply run:
+
+```shell
+helm repo add influxdata https://helm.influxdata.com/
+helm upgrade --install telegraf-operator influxdata/telegraf-operator
+```
+
+To change one or more settings, please use the `--set` option - such as:
+
+```shell
+helm upgrade --install telegraf-operator influxdata/telegraf-operator \
+  --set certManager.enable=true
+```
+
+The `certManager.enable` setting will use [`cert-manager`](https://cert-manager.io/) CRDs to generate TLS certificates for the webhook admission controller used by `telegraf-operator`. Please note that this requires [`cert-manager`](https://cert-manager.io/) to be installed in the cluster to work.
+
+It is recommended to use a [values file](https://helm.sh/docs/chart_template_guide/values_files/) instead of setting name-values.
+
+It's also recommended to configure the [`classes.data`](https://github.com/influxdata/helm-charts/blob/62b039f/charts/telegraf-operator/values.yaml#L10-L18) values, which specify the telegraf-operator classes and how gathered data should be stored or persisted. Classes are described in more details in [Global configuration - classes](#global-configuration---classes) section.
+
+For example:
+
+```yaml
+classes:
+  data:
+    default: |
+      [[outputs.file]]
+        files = ["stdout"]
+```
+
+This will cause telegraf for `default` class of monitored workloads to write their data to standard output of the telegraf container.
+
+All of the available settings can be found in the [`values.yaml`](https://github.com/influxdata/helm-charts/blob/master/charts/telegraf-operator/values.yaml) file bundled with the Helm chart.
+
+Information about the Helm chart can also be found at [https://artifacthub.io/packages/helm/influxdata/telegraf-operator](https://artifacthub.io/packages/helm/influxdata/telegraf-operator).
+
+### OperatorHub
+
+An up to date version of `telegraf-operator` is also available from [OperatorHub.io](https://operatorhub.io/).
+
+Please follow instructions at [https://operatorhub.io/operator/telegraf-operator](https://operatorhub.io/operator/telegraf-operator) for installing `telegraf-operator`.
+
+## Adding annotations to workloads
+
+In order for `telegraf-operator` to monitor a workload, one or more annotations need to be added to the pod. The `telegraf.influxdata.com/class` annotation specifies which class of workload it is. It also needs information on how to scrape data. For prometheus metrics the annotation is `telegraf.influxdata.com/ports`, which specifies port or ports to scrape at. The default path is `/metrics` and can be changed.
+
+By default `telegraf-operator` comes with an example `default` class configured to write to an in-cluster instance of InfluxDB.
+
+For `Deployment`, `StatefulSet` and most other Kubernetes objects, this should be added to `.spec.template.metadata.annotations` section - such as:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+# ...
+spec:
+  # ...
+  template:
+    metadata:
+      annotations:
+        telegraf.influxdata.com/class: "default"
+        telegraf.influxdata.com/ports: "8080"
+    spec:
+      # ...
+```
+
+Please see [Pod-level annotations](#pod-level-annotations) for more details on all annotations `telegraf-operator` supports.
+
 ## Adding telegraf-operator in development mode
 
-We don't provide yet a production-like deployment of `telegraf-operator` given the alpha status of the project
-
-But we provide a development version that can be installed by running
+For development purposes, the repository provides a development version that can be installed by running:
 
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/influxdata/telegraf-operator/master/deploy/dev.yml 
