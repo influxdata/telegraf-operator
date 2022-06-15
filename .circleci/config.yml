@@ -24,7 +24,7 @@ workflows:
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.16 # We shell out to git in tests, and circleci/golang should have it installed.
+      - image: cimg/go:1.18 # We shell out to git in tests, and circleci/golang should have it installed.
 
     working_directory: ~/telegraf-operator # Doesn't need to be in GOPATH since it's a Go module.
 
@@ -52,12 +52,6 @@ jobs:
           name: Restoring GOPATH/pkg/mod
           keys:
             - telegraf-operator-gomod-{{ checksum "go.sum" }} # Matches based on go.sum checksum.
-
-      # Add the backport source for new git, and install it.
-      - run: echo 'deb http://deb.debian.org/debian stretch-backports main' | sudo tee /etc/apt/sources.list.d/stretch-backports.list
-      - run: sudo apt-get update
-      - run: sudo apt-get -t stretch-backports install -y git
-      - run: git version
 
       # Build the binaries for the integration tests.
       - run: go build -race

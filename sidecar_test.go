@@ -12,7 +12,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	encode "k8s.io/apimachinery/pkg/runtime/serializer/json"
+
+	"github.com/kudobuilder/kuttl/pkg/test/utils"
 )
 
 var (
@@ -1424,9 +1425,8 @@ func Test_ports(t *testing.T) {
 func toYAML(t *testing.T, o runtime.Object) string {
 	t.Helper()
 
-	enc := encode.NewYAMLSerializer(encode.DefaultMetaFactory, nil, nil)
 	var b bytes.Buffer
-	if err := enc.Encode(o, &b); err != nil {
+	if err := utils.MarshalObject(o, &b); err != nil {
 		t.Errorf("unable to encode container %v", err)
 	}
 
