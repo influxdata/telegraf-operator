@@ -1348,7 +1348,6 @@ status: {}
 			if want, got := len(tt.wantSecrets), len(result.secrets); got != want {
 				t.Errorf("invalid number of secrets returned got: %d; want: %d", got, want)
 			}
-
 			for i := 0; i < len(result.secrets); i++ {
 				if want, got := strings.TrimSpace(tt.wantSecrets[i]), strings.TrimSpace(toYAML(t, result.secrets[i])); got != want {
 					t.Errorf("unexpected secret %d got:\n%v\nwant:\n%v", i, got, want)
