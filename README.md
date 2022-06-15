@@ -226,8 +226,9 @@ Users can configure the `inputs.prometheus` plugin by setting the following anno
 - `telegraf.influxdata.com/scheme` : is used to configure at the scheme for the metrics to scrape, will apply to all ports if multiple are configured ( only `http` or `https` are allowed as values)
 - `telegraf.influxdata.com/interval` : is used to configure interval for telegraf scraping (Go style duration, e.g 5s, 30s, 2m .. )
 - `telegraf.influxdata.com/metric-version` : is used to configure which metrics parsing version to use (1, 2)
+- `telegraf.influxdata.com/namepass` : is used to configure scraped metrics to preserve configuration for `telegraf`, being a TOML value to add to telegraf configuration; all metrics are passed if not specified
 
-**NOTE**: all annotations should be formatted as strings - for example `telegraf.influxdata.com/port: "8080"` or `telegraf.influxdata.com/metric-version: "2"`.
+**NOTE**: all annotations should be formatted as strings - for example `telegraf.influxdata.com/port: "8080"`, `telegraf.influxdata.com/metric-version: "2"` or  `telegraf.influxdata.com/namepass: "['metric1','metric2']"`.
 
 ### Example Prometheus Scraping
 

@@ -216,8 +216,7 @@ func Test_assembleConf(t *testing.T) {
 			wantConfig: `
 [[inputs.prometheus]]
   urls = ["http://127.0.0.1:6060/metrics"]
-  
-  
+
 
 [global_tags]
   dc = "us-east-1"
@@ -228,12 +227,13 @@ func Test_assembleConf(t *testing.T) {
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						TelegrafMetricsPath:    "/metrics/usage",
-						TelegrafMetricsScheme:  "https",
-						TelegrafInterval:       "10s",
-						TelegrafMetricsPorts:   "6060,8086",
-						TelegrafEnableInternal: "true",
-						TelegrafMetricVersion:  "2",
+						TelegrafMetricsPath:     "/metrics/usage",
+						TelegrafMetricsScheme:   "https",
+						TelegrafInterval:        "10s",
+						TelegrafMetricsPorts:    "6060,8086",
+						TelegrafEnableInternal:  "true",
+						TelegrafMetricVersion:   "2",
+						TelegrafMetricsNamepass: "['a','b','c']",
 					},
 				},
 			},
@@ -242,6 +242,8 @@ func Test_assembleConf(t *testing.T) {
   urls = ["https://127.0.0.1:6060/metrics/usage", "https://127.0.0.1:8086/metrics/usage"]
   interval = "10s"
   metric_version = 2
+  namepass = ['a','b','c']
+
 
 [[inputs.internal]]
 
@@ -260,7 +262,6 @@ func Test_assembleConf(t *testing.T) {
 			wantConfig: `
 [[inputs.prometheus]]
   urls = ["http://127.0.0.1:6060/metrics"]
-  
   metric_version = 2
 
 `,
@@ -276,6 +277,23 @@ func Test_assembleConf(t *testing.T) {
 				},
 			},
 			wantErr: true,
+		},
+		{
+			name: "default prometheus settings with namepass",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafMetricsPorts:    "6060",
+						TelegrafMetricsNamepass: "['a','b','c']",
+					},
+				},
+			},
+			wantConfig: `
+[[inputs.prometheus]]
+  urls = ["http://127.0.0.1:6060/metrics"]
+  namepass = ['a','b','c']
+
+`,
 		},
 		{
 			name: "valid TOML syntax",
@@ -421,7 +439,12 @@ metadata:
   name: telegraf-config-myname
   namespace: mynamespace
 stringData:
-  telegraf.conf: "\n[[inputs.prometheus]]\n  urls = [\"http://127.0.0.1:6060/metrics\"]\n  \n  \n\n"
+  telegraf.conf: |2+
+
+    [[inputs.prometheus]]
+      urls = ["http://127.0.0.1:6060/metrics"]
+
+
 type: Opaque`,
 			},
 		},
