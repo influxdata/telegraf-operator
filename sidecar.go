@@ -37,6 +37,8 @@ const (
 	TelegrafMetricsScheme = "telegraf.influxdata.com/scheme"
 	// TelegrafMetricVersion is used to configure which metrics parsing version to use (1, 2)
 	TelegrafMetricVersion = "telegraf.influxdata.com/metric-version"
+	// TelegrafMetricsNamepass is used to specify value for namepass for Prometheus metrics, as raw TOML configuration
+	TelegrafMetricsNamepass = "telegraf.influxdata.com/namepass"
 	// TelegrafInterval is used to configure interval for telegraf (Go style duration, e.g 5s, 30s, 2m .. )
 	TelegrafInterval = "telegraf.influxdata.com/interval"
 	// TelegrafRawInput is used to configure custom inputs for telegraf
@@ -242,29 +244,33 @@ func (h *sidecarHandler) assembleConf(pod *corev1.Pod, className string) (telegr
 		if extScheme, ok := pod.Annotations[TelegrafMetricsScheme]; ok {
 			scheme = extScheme
 		}
-		intervalConfig := ""
+
+		additionalConfig := ""
+
 		intervalRaw, ok := pod.Annotations[TelegrafInterval]
 		if ok {
-			intervalConfig = fmt.Sprintf("interval = \"%s\"", intervalRaw)
+			additionalConfig = fmt.Sprintf("%s  interval = \"%s\"\n", additionalConfig, intervalRaw)
 		}
 
-		versionConfig := ""
 		if versionRaw, ok := pod.Annotations[TelegrafMetricVersion]; ok {
 			version, err := strconv.ParseInt(versionRaw, 10, 0)
 			if err != nil {
 				return "", fmt.Errorf("value supplied for %s must be a number, %s given", TelegrafMetricVersion, versionRaw)
 			}
 
-			versionConfig = fmt.Sprintf("metric_version = %d", version)
+			additionalConfig = fmt.Sprintf("%s  metric_version = %d\n", additionalConfig, version)
+		}
+
+		if namepass, ok := pod.Annotations[TelegrafMetricsNamepass]; ok {
+			additionalConfig = fmt.Sprintf("%s  namepass = %s\n", additionalConfig, namepass)
 		}
 
 		urls := []string{}
 		for _, port := range ports {
 			urls = append(urls, fmt.Sprintf("%s://127.0.0.1:%s%s", scheme, port, path))
 		}
-		if len(urls) != 0 {
-			telegrafConf = fmt.Sprintf("%s\n%s", telegrafConf, fmt.Sprintf("[[inputs.prometheus]]\n  urls = [\"%s\"]\n  %s\n  %s\n", strings.Join(urls, `", "`), intervalConfig, versionConfig))
-		}
+
+		telegrafConf = fmt.Sprintf("%s\n[[inputs.prometheus]]\n  urls = [\"%s\"]\n%s\n", telegrafConf, strings.Join(urls, `", "`), additionalConfig)
 	}
 	enableInternal := h.EnableDefaultInternalPlugin
 	if internalRaw, ok := pod.Annotations[TelegrafEnableInternal]; ok {

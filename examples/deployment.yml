@@ -1,20 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx
+  name: hello-world
   namespace: test
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: nginx
+      app: hello-world
   template:
     metadata:
       labels:
-        app: nginx
+        app: hello-world
       annotations:
-        telegraf.influxdata.com/ports: "9090"
+        telegraf.influxdata.com/ports: "8080"
+        telegraf.influxdata.com/namepass: "['go_info','hello_processed_total','go_memstats*']"
     spec:
       containers:
-      - name: nginx
-        image: nginx:alpine
+      - name: hello-world
+        image: okteto/hello-world:golang-metrics
