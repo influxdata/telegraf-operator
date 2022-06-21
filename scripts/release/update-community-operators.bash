@@ -38,7 +38,7 @@ main() {
 
   cd "${COMMUNITY_OPERATORS_PATH}"
   git add "${OPERATOR_PATH}/${version}"
-  git commit -m "operators telegraf-operator (${version})"
+  git commit -m "operators telegraf-operator (${version})" --signoff
 }
 
 main "$@"
