@@ -70,7 +70,7 @@ const (
 	TelegrafLimitsCPU = "telegraf.influxdata.com/limits-cpu"
 	// TelegrafLimitsMemory allows specifying custom memory resource limits
 	TelegrafLimitsMemory = "telegraf.influxdata.com/limits-memory"
-	// TelegrafVolumeMounts allows specifying custom volumes to mount on telegraf sidecar
+	// TelegrafVolumeMounts allows specifying custom extra volumes to mount on telegraf sidecar, should be json formatted, eg: {"volumeName": "mountPath"}
 	TelegrafVolumeMounts = "telegraf.influxdata.com/volume-mounts"
 	telegrafSecretInfix  = "config"
 
