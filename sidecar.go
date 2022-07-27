@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -69,6 +70,8 @@ const (
 	TelegrafLimitsCPU = "telegraf.influxdata.com/limits-cpu"
 	// TelegrafLimitsMemory allows specifying custom memory resource limits
 	TelegrafLimitsMemory = "telegraf.influxdata.com/limits-memory"
+	// TelegrafVolumeMounts allows specifying custom volumes to mount on telegraf sidecar
+	TelegrafVolumeMounts = "telegraf.influxdata.com/volume-mounts"
 	telegrafSecretInfix  = "config"
 
 	TelegrafSecretAnnotationKey   = "app.kubernetes.io/managed-by"
@@ -384,12 +387,26 @@ func (h *sidecarHandler) parseCustomOrDefaultQuantity(result corev1.ResourceList
 	return nil
 }
 
+// parseCustomTelegrafVolumeMounts parses custom volumeMounts from annotations, 
+// telegrafVolumeMount should be json formatted, eg: {"volumeName": "mountPath"}
+// default is empty string.
+func (h *sidecarHandler) parseCustomTelegrafVolumeMounts(volumeMounts map[string]string, telegrafVolumeMount string) (err error) {
+	if telegrafVolumeMount != "" {
+		if err = json.Unmarshal([]byte(telegrafVolumeMount), volumeMounts); err != nil {
+			return err
+		}
+		
+	}
+	return nil
+}
+
 func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (corev1.Container, error) {
 	var telegrafImage string
 	var telegrafRequestsCPU string
 	var telegrafRequestsMemory string
 	var telegrafLimitsCPU string
 	var telegrafLimitsMemory string
+	var telegrafVolumeMounts string
 
 	if customTelegrafImage, ok := pod.Annotations[TelegrafImage]; ok {
 		telegrafImage = customTelegrafImage
@@ -416,9 +433,15 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 	} else {
 		telegrafLimitsMemory = h.LimitsMemory
 	}
+	if customeTelegrafVolumeMounts, ok := pod.Annotations[TelegrafVolumeMounts]; ok {
+		telegrafVolumeMounts = customeTelegrafVolumeMounts
+	} else {
+		telegrafVolumeMounts = ""
+	}
 
 	resourceRequests := corev1.ResourceList{}
 	resourceLimits := corev1.ResourceList{}
+	volumeMounts := map[string]string{}
 
 	if err := h.parseCustomOrDefaultQuantity(resourceRequests, "cpu", telegrafRequestsCPU, h.RequestsCPU); err != nil {
 		return corev1.Container{}, err
@@ -431,6 +454,9 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 		return corev1.Container{}, err
 	}
 	if err := h.parseCustomOrDefaultQuantity(resourceLimits, "memory", telegrafLimitsMemory, h.LimitsMemory); err != nil {
+		return corev1.Container{}, err
+	}
+	if err := h.parseCustomTelegrafVolumeMounts(volumeMounts, telegrafVolumeMounts); err != nil {
 		return corev1.Container{}, err
 	}
 
@@ -462,6 +488,15 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 			},
 		},
 	}
+
+	vls := baseContainer.VolumeMounts
+	for volumeName, mountPath := range volumeMounts {
+		vls = append(vls, corev1.VolumeMount{
+			Name: volumeName,
+			MountPath: mountPath,
+		})
+	}
+	baseContainer.VolumeMounts = vls
 
 	if secretEnv, ok := pod.Annotations[TelegrafSecretEnv]; ok {
 		baseContainer.EnvFrom = []corev1.EnvFromSource{
