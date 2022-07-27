@@ -390,7 +390,7 @@ func (h *sidecarHandler) parseCustomOrDefaultQuantity(result corev1.ResourceList
 // parseCustomTelegrafVolumeMounts parses custom volumeMounts from annotations, 
 // telegrafVolumeMount should be json formatted, eg: {"volumeName": "mountPath"}
 // default is empty string.
-func (h *sidecarHandler) parseCustomTelegrafVolumeMounts(volumeMounts map[string]string, telegrafVolumeMount string) (err error) {
+func (h *sidecarHandler) parseCustomTelegrafVolumeMounts(volumeMounts *map[string]string, telegrafVolumeMount string) (err error) {
 	if telegrafVolumeMount != "" {
 		if err = json.Unmarshal([]byte(telegrafVolumeMount), volumeMounts); err != nil {
 			return err
@@ -456,7 +456,7 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 	if err := h.parseCustomOrDefaultQuantity(resourceLimits, "memory", telegrafLimitsMemory, h.LimitsMemory); err != nil {
 		return corev1.Container{}, err
 	}
-	if err := h.parseCustomTelegrafVolumeMounts(volumeMounts, telegrafVolumeMounts); err != nil {
+	if err := h.parseCustomTelegrafVolumeMounts(&volumeMounts, telegrafVolumeMounts); err != nil {
 		return corev1.Container{}, err
 	}
 
