@@ -1308,6 +1308,61 @@ status: {}
       `,
 			wantSecrets: []string{testEmptySecret},
 		},
+		{
+			name: "validate volume mounts",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafClass:        "default",
+						TelegrafVolumeMounts: `{"emptydir":"/mnt/empty"}`,
+					},
+				},
+				Spec: corev1.PodSpec{
+					Volumes: []corev1.Volume{
+						{Name: "emptydir"},
+					},
+				},
+			},
+			wantPod: `
+metadata:
+  annotations:
+    telegraf.influxdata.com/class: default
+    telegraf.influxdata.com/volume-mounts: '{"emptydir":"/mnt/empty"}'
+  creationTimestamp: null
+spec:
+  containers:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    image: docker.io/library/telegraf:1.22
+    name: telegraf
+    resources:
+      limits:
+        cpu: 200m
+        memory: 200Mi
+      requests:
+        cpu: 10m
+        memory: 10Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-config
+    - mountPath: /mnt/empty
+      name: emptydir
+  volumes:
+  - name: emptydir
+  - name: telegraf-config
+    secret:
+      secretName: telegraf-config-myname
+status: {}
+      `,
+			wantSecrets: []string{testEmptySecret},
+		},
 	}
 
 	for _, tt := range tests {
