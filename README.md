@@ -279,6 +279,7 @@ Additional pod annotations that can be used to configure the Telegraf sidecar:
 - `telegraf.influxdata.com/requests-memory` : allows specifying resource requests for memory
 - `telegraf.influxdata.com/limits-cpu` : allows specifying resource limits for CPU
 - `telegraf.influxdata.com/limits-memory` : allows specifying resource limits for memory
+- `telegraf.influxdata.com/volume-mounts` : allows specifying extra volumes mount into the telegraf sidecar, the value should be json formatted, eg: {"volumeName": "mountPath"}
 
 
 ##### Example of extra additional options
@@ -298,6 +299,7 @@ spec:
         telegraf.influxdata.com/env-configmapkeyref-REDIS_SERVER: configmap-name.redis.url
         telegraf.influxdata.com/env-secretkeyref-PASSWORD: app-secret.redis.password
         telegraf.influxdata.com/env-literal-VERSION: "1.0"
+        telegraf.influxdata.com/volume-mounts: {"xxx-3080bfa7-log":"/opt/xxx/log"}
         telegraf.influxdata.com/inputs: |+
           [[inputs.redis]]
             servers = ["$REDIS_SERVER"]
