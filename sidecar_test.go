@@ -813,6 +813,85 @@ status: {}
 			wantSecrets: []string{testEmptyIstioSecret},
 		},
 		{
+			name: "validate istio sidecar memory and cpu requests via annotations",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						IstioSidecarAnnotation:      "dummy",
+						IstioTelegrafRequestsCPU:    "250m",
+						IstioTelegrafRequestsMemory: "200Mi",
+						IstioTelegrafLimitsCPU:      "300m",
+						IstioTelegrafLimitsMemory:   "500Mi",
+					},
+				},
+			},
+			enableIstioInjection: true,
+			istioOutputClass:     "istio",
+			wantPod: `
+metadata:
+  annotations:
+    sidecar.istio.io/status: dummy
+    telegraf.influxdata.com/istio-limits-cpu: 300m
+    telegraf.influxdata.com/istio-limits-memory: 500Mi
+    telegraf.influxdata.com/istio-requests-cpu: 250m
+    telegraf.influxdata.com/istio-requests-memory: 200Mi
+  creationTimestamp: null
+spec:
+  containers:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    image: docker.io/library/telegraf:1.22
+    name: telegraf
+    resources:
+      limits:
+        cpu: 200m
+        memory: 200Mi
+      requests:
+        cpu: 10m
+        memory: 10Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-config
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    image: docker.io/library/telegraf:1.22
+    name: telegraf-istio
+    resources:
+      limits:
+        cpu: 300m
+        memory: 500Mi
+      requests:
+        cpu: 250m
+        memory: 200Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-istio-config
+  volumes:
+  - name: telegraf-config
+    secret:
+      secretName: telegraf-config-myname
+  - name: telegraf-istio-config
+    secret:
+      secretName: telegraf-istio-config-myname
+status: {}
+`,
+			wantSecrets: []string{testEmptySecret, testEmptyIstioSecret},
+		},
+		{
 			name: "does not add istio sidecar when container already exists",
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1393,6 +1472,10 @@ status: {}
 				RequestsMemory:              defaultRequestsMemory,
 				LimitsCPU:                   defaultLimitsCPU,
 				LimitsMemory:                defaultLimitsMemory,
+				IstioRequestsCPU:            defaultRequestsCPU,
+				IstioRequestsMemory:         defaultRequestsMemory,
+				IstioLimitsCPU:              defaultLimitsCPU,
+				IstioLimitsMemory:           defaultLimitsMemory,
 				Logger:                      &logrTesting.TestLogger{T: t},
 			}
 
