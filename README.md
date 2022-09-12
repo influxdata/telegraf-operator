@@ -279,6 +279,10 @@ Additional pod annotations that can be used to configure the Telegraf sidecar:
 - `telegraf.influxdata.com/requests-memory` : allows specifying resource requests for memory
 - `telegraf.influxdata.com/limits-cpu` : allows specifying resource limits for CPU
 - `telegraf.influxdata.com/limits-memory` : allows specifying resource limits for memory
+- `telegraf.influxdata.com/istio-requests-cpu` : allows specifying resource requests for CPU for istio sidecar
+- `telegraf.influxdata.com/istio-requests-memory` : allows specifying resource requests for memory for istio sidecar
+- `telegraf.influxdata.com/istio-limits-cpu` : allows specifying resource limits for CPU for istio sidecar
+- `telegraf.influxdata.com/istio-limits-memory` : allows specifying resource limits for memory for istio sidecar
 - `telegraf.influxdata.com/volume-mounts` : allows specifying extra volumes mount into the telegraf sidecar, the value should be json formatted, eg: {"volumeName": "mountPath"}
 
 
