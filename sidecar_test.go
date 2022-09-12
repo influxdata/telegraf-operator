@@ -570,7 +570,7 @@ type: Opaque`,
 			},
 		},
 		{
-			name: "validate custom resources and limits",
+			name: "validate custom resourcesmetadata:\n          annotations:\n            sidecar.istio.io/status: dummy\n            telegraf.influxdata.com/istio-limits-cpu: 400m\n            telegraf.influxdata.com/istio-limits-memory: 400Mi\n            telegraf.influxdata.com/istio-requests-cpu: 100m\n            telegraf.influxdata.com/istio-requests-memory: 100Mi\n          creationTimestamp: null\n        spec:\n          containers:\n          - command:\n            - telegraf\n            - --config\n            - /etc/telegraf/telegraf.conf\n            env:\n            - name: NODENAME\n              valueFrom:\n                fieldRef:\n                  fieldPath: spec.nodeName\n            image: docker.io/library/telegraf:1.22\n            name: telegraf\n            resources:\n              limits:\n                cpu: 200m\n                memory: 200Mi\n              requests:\n                cpu: 10m\n                memory: 10Mi\n            volumeMounts:\n            - mountPath: /etc/telegraf\n              name: telegraf-config\n          - command:\n            - telegraf\n            - --config\n            - /etc/telegraf/telegraf.conf\n            env:\n            - name: NODENAME\n              valueFrom:\n                fieldRef:\n                  fieldPath: spec.nodeName\n            image: docker.io/library/telegraf:1.22\n            name: telegraf-istio\n            resources:\n              limits:\n                cpu: 400m\n                memory: 400Mi\n              requests:\n                cpu: 100m\n                memory: 100Mi\n            volumeMounts:\n            - mountPath: /etc/telegraf\n              name: telegraf-istio-config\n          volumes:\n          - name: telegraf-config\n            secret:\n              secretName: telegraf-config-myname\n          - name: telegraf-istio-config\n            secret:\n              secretName: telegraf-istio-config-mynameust and limits",
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
@@ -856,6 +856,93 @@ spec:
       requests:
         cpu: 10m
         memory: 10Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-config
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    image: docker.io/library/telegraf:1.22
+    name: telegraf-istio
+    resources:
+      limits:
+        cpu: 300m
+        memory: 500Mi
+      requests:
+        cpu: 250m
+        memory: 200Mi
+    volumeMounts:
+    - mountPath: /etc/telegraf
+      name: telegraf-istio-config
+  volumes:
+  - name: telegraf-config
+    secret:
+      secretName: telegraf-config-myname
+  - name: telegraf-istio-config
+    secret:
+      secretName: telegraf-istio-config-myname
+status: {}
+`,
+			wantSecrets: []string{testEmptySecret, testEmptyIstioSecret},
+		},
+		{
+			name: "validate istio and telegraf sidecar memory and cpu requests via annotations",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						IstioSidecarAnnotation:      "dummy",
+						IstioTelegrafRequestsCPU:    "250m",
+						IstioTelegrafRequestsMemory: "200Mi",
+						IstioTelegrafLimitsCPU:      "300m",
+						IstioTelegrafLimitsMemory:   "500Mi",
+						TelegrafRequestsCPU:         "150m",
+						TelegrafRequestsMemory:      "100Mi",
+						TelegrafLimitsCPU:           "200m",
+						TelegrafLimitsMemory:        "400Mi",
+					},
+				},
+			},
+			enableIstioInjection: true,
+			istioOutputClass:     "istio",
+			wantPod: `
+metadata:
+  annotations:
+    sidecar.istio.io/status: dummy
+    telegraf.influxdata.com/istio-limits-cpu: 300m
+    telegraf.influxdata.com/istio-limits-memory: 500Mi
+    telegraf.influxdata.com/istio-requests-cpu: 250m
+    telegraf.influxdata.com/istio-requests-memory: 200Mi
+    telegraf.influxdata.com/limits-cpu: 200m
+    telegraf.influxdata.com/limits-memory: 400Mi
+    telegraf.influxdata.com/requests-cpu: 150m
+    telegraf.influxdata.com/requests-memory: 100Mi
+  creationTimestamp: null
+spec:
+  containers:
+  - command:
+    - telegraf
+    - --config
+    - /etc/telegraf/telegraf.conf
+    env:
+    - name: NODENAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    image: docker.io/library/telegraf:1.22
+    name: telegraf
+    resources:
+      limits:
+        cpu: 200m
+        memory: 400Mi
+      requests:
+        cpu: 150m
+        memory: 100Mi
     volumeMounts:
     - mountPath: /etc/telegraf
       name: telegraf-config
