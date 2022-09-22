@@ -70,6 +70,14 @@ const (
 	TelegrafLimitsCPU = "telegraf.influxdata.com/limits-cpu"
 	// TelegrafLimitsMemory allows specifying custom memory resource limits
 	TelegrafLimitsMemory = "telegraf.influxdata.com/limits-memory"
+	// IstioTelegrafRequestsCPU allows specifying custom CPU resource requests
+	IstioTelegrafRequestsCPU = "telegraf.influxdata.com/istio-requests-cpu"
+	// IstioTelegrafRequestsMemory allows specifying custom memory resource requests
+	IstioTelegrafRequestsMemory = "telegraf.influxdata.com/istio-requests-memory"
+	// IstioTelegrafLimitsCPU allows specifying custom CPU resource limits
+	IstioTelegrafLimitsCPU = "telegraf.influxdata.com/istio-limits-cpu"
+	// IstioTelegrafLimitsMemory allows specifying custom memory resource limits
+	IstioTelegrafLimitsMemory = "telegraf.influxdata.com/istio-limits-memory"
 	// TelegrafVolumeMounts allows specifying custom extra volumes to mount on telegraf sidecar, should be json formatted, eg: {"volumeName": "mountPath"}
 	TelegrafVolumeMounts = "telegraf.influxdata.com/volume-mounts"
 	telegrafSecretInfix  = "config"
@@ -93,6 +101,10 @@ type sidecarHandler struct {
 	RequestsMemory              string
 	LimitsCPU                   string
 	LimitsMemory                string
+	IstioRequestsCPU            string
+	IstioRequestsMemory         string
+	IstioLimitsCPU              string
+	IstioLimitsMemory           string
 	EnableIstioInjection        bool
 	IstioOutputClass            string
 	IstioTelegrafImage          string
@@ -387,7 +399,7 @@ func (h *sidecarHandler) parseCustomOrDefaultQuantity(result corev1.ResourceList
 	return nil
 }
 
-// parseCustomTelegrafVolumeMounts parses custom volumeMounts from annotations, 
+// parseCustomTelegrafVolumeMounts parses custom volumeMounts from annotations,
 // telegrafVolumeMount should be json formatted, eg: {"volumeName": "mountPath"}
 // default is empty string.
 func (h *sidecarHandler) parseCustomTelegrafVolumeMounts(volumeMounts *map[string]string, telegrafVolumeMount string) (err error) {
@@ -492,7 +504,7 @@ func (h *sidecarHandler) newContainer(pod *corev1.Pod, containerName string) (co
 	vls := baseContainer.VolumeMounts
 	for volumeName, mountPath := range volumeMounts {
 		vls = append(vls, corev1.VolumeMount{
-			Name: volumeName,
+			Name:      volumeName,
 			MountPath: mountPath,
 		})
 	}
@@ -584,23 +596,47 @@ func AnnotationsWithPrefix(annotations map[string]string, prefix string) map[str
 }
 
 func (h *sidecarHandler) newIstioContainer(pod *corev1.Pod, containerName string) (corev1.Container, error) {
-	var parsedRequestsCPU resource.Quantity
-	var parsedRequestsMemory resource.Quantity
-	var parsedLimitsCPU resource.Quantity
-	var parsedLimitsMemory resource.Quantity
-	var err error
 
-	if parsedRequestsCPU, err = resource.ParseQuantity(h.RequestsCPU); err != nil {
+	var istioTelegrafRequestsCPU string
+	var istioTelegrafRequestsMemory string
+	var istioTelegrafLimitsCPU string
+	var istioTelegrafLimitsMemory string
+
+	if customIstioTelegrafRequestsCPU, ok := pod.Annotations[IstioTelegrafRequestsCPU]; ok {
+		istioTelegrafRequestsCPU = customIstioTelegrafRequestsCPU
+	} else {
+		istioTelegrafRequestsCPU = h.IstioRequestsCPU
+	}
+	if customIstioTelegrafRequestsMemory, ok := pod.Annotations[IstioTelegrafRequestsMemory]; ok {
+		istioTelegrafRequestsMemory = customIstioTelegrafRequestsMemory
+	} else {
+		istioTelegrafRequestsMemory = h.IstioRequestsMemory
+	}
+	if customIstioTelegrafLimitsCPU, ok := pod.Annotations[IstioTelegrafLimitsCPU]; ok {
+		istioTelegrafLimitsCPU = customIstioTelegrafLimitsCPU
+	} else {
+		istioTelegrafLimitsCPU = h.IstioLimitsCPU
+	}
+	if customIstioTelegrafLimitsMemory, ok := pod.Annotations[IstioTelegrafLimitsMemory]; ok {
+		istioTelegrafLimitsMemory = customIstioTelegrafLimitsMemory
+	} else {
+		istioTelegrafLimitsMemory = h.IstioLimitsMemory
+	}
+
+	resourceRequests := corev1.ResourceList{}
+	resourceLimits := corev1.ResourceList{}
+
+	if err := h.parseCustomOrDefaultQuantity(resourceRequests, "cpu", istioTelegrafRequestsCPU, h.IstioRequestsCPU); err != nil {
 		return corev1.Container{}, err
 	}
-	if parsedRequestsMemory, err = resource.ParseQuantity(h.RequestsMemory); err != nil {
+	if err := h.parseCustomOrDefaultQuantity(resourceRequests, "memory", istioTelegrafRequestsMemory, h.IstioRequestsMemory); err != nil {
 		return corev1.Container{}, err
 	}
 
-	if parsedLimitsCPU, err = resource.ParseQuantity(h.LimitsCPU); err != nil {
+	if err := h.parseCustomOrDefaultQuantity(resourceLimits, "cpu", istioTelegrafLimitsCPU, h.IstioLimitsCPU); err != nil {
 		return corev1.Container{}, err
 	}
-	if parsedLimitsMemory, err = resource.ParseQuantity(h.LimitsMemory); err != nil {
+	if err := h.parseCustomOrDefaultQuantity(resourceLimits, "memory", istioTelegrafLimitsMemory, h.IstioLimitsMemory); err != nil {
 		return corev1.Container{}, err
 	}
 
@@ -616,14 +652,8 @@ func (h *sidecarHandler) newIstioContainer(pod *corev1.Pod, containerName string
 		Image:   telegrafImage,
 		Command: telegrafContainerCommand,
 		Resources: corev1.ResourceRequirements{
-			Limits: corev1.ResourceList{
-				"cpu":    parsedLimitsCPU,
-				"memory": parsedLimitsMemory,
-			},
-			Requests: corev1.ResourceList{
-				"cpu":    parsedRequestsCPU,
-				"memory": parsedRequestsMemory,
-			},
+			Requests: resourceRequests,
+			Limits:   resourceLimits,
 		},
 		Env: []corev1.EnvVar{
 			{
