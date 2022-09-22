@@ -12,7 +12,7 @@ create the release.
 
 ### Update the community-operators hub and Helm chart repos
 
-Clone `influxdata/helm-chart`s and fork and clone the `k8s-operatorhub/community-operators` repo into the same directory as telegraf-operator.
+Clone `influxdata/helm-chart`s and fork and clone the `k8s-operatorhub/community-operators` repo into the same directory as telegraf-operator (i.e. `telegraf-operator`, `helm-charts` and forked `community-operators` should have same parent directory).
 
 then run the following command:
 
