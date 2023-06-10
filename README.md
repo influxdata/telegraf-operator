@@ -327,6 +327,11 @@ stringData:
       version = "$VERSION"
 ```
 
+# Support
+
+This operator is community supported. InfluxData provides no official support for their use.
+
+Pull requests and issues are the responsibility of the project's moderator(s) which may include vetted individuals outside of the InfluxData organization. All issues should be reported and managed via GitHub (not via InfluxData's standard support process).
 
 # Contributing to telegraf-operator
 
