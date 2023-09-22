@@ -406,6 +406,77 @@ func Test_assembleConf(t *testing.T) {
 	}
 }
 
+func Test_assembleConfs(t *testing.T) {
+	tests := []struct {
+		name                        string
+		pod                         *corev1.Pod
+		classData                   string
+		enableDefaultInternalPlugin bool
+		wantConfig                  string
+		wantErr                     bool
+	}{
+		{
+			name: "validate multiple class configs with one undefined",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafClass: "stdout,notdefined",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "validate multiple class configs",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafClass: "stdout,influxdb",
+					},
+				},
+			},
+			wantConfig: `
+[[outputs.file]]
+[[outputs.influxdb]]`,
+		},
+		{
+			name: "validate multiple class configs with whitespace",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						TelegrafClass: "stdout , influxdb",
+					},
+				},
+			},
+			wantConfig: `
+[[outputs.file]]
+[[outputs.influxdb]]`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			handler := &sidecarHandler{
+				ClassDataHandler:            newMockClassDataHandler(map[string]string{"stdout": "[[outputs.file]]\n", "influxdb": "[[outputs.influxdb]]\n"}),
+				EnableDefaultInternalPlugin: tt.enableDefaultInternalPlugin,
+				RequestsCPU:                 defaultRequestsCPU,
+				RequestsMemory:              defaultRequestsMemory,
+				LimitsCPU:                   defaultLimitsCPU,
+				LimitsMemory:                defaultLimitsMemory,
+				Logger:                      &logrTesting.TestLogger{T: t},
+			}
+			gotConfig, err := handler.assembleConf(tt.pod, tt.pod.ObjectMeta.Annotations[TelegrafClass])
+			if (err != nil) != tt.wantErr {
+				t.Errorf("assembleConf() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if strings.TrimSpace(gotConfig) != strings.TrimSpace(tt.wantConfig) {
+				t.Errorf("assembleConf() = %v, want %v", gotConfig, tt.wantConfig)
+			}
+		})
+	}
+}
+
 func Test_addSidecars(t *testing.T) {
 	tests := []struct {
 		name                        string

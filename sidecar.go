@@ -244,9 +244,15 @@ func (h *sidecarHandler) getClassData(className string) (string, error) {
 
 // Assembling telegraf configuration
 func (h *sidecarHandler) assembleConf(pod *corev1.Pod, className string) (telegrafConf string, err error) {
-	classData, err := h.ClassDataHandler.getData(className)
-	if err != nil {
-		return "", newNonFatalError(err, "telegraf-operator could not create sidecar container for unknown class")
+
+	var classData string
+
+	for _, className := range strings.Split(className, ",") {
+		singleClassData, err := h.ClassDataHandler.getData(strings.TrimSpace(className))
+		if err != nil {
+			return "", newNonFatalError(err, "telegraf-operator could not create sidecar container for unknown class")
+		}
+		classData += singleClassData
 	}
 
 	ports := ports(pod)
@@ -407,7 +413,6 @@ func (h *sidecarHandler) parseCustomTelegrafVolumeMounts(volumeMounts *map[strin
 		if err = json.Unmarshal([]byte(telegrafVolumeMount), volumeMounts); err != nil {
 			return err
 		}
-		
 	}
 	return nil
 }
