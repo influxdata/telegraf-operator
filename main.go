@@ -100,11 +100,14 @@ func main() {
 	flag.StringVar(&istioTelegrafLimitsCPU, "istio-ttelegraf-limits-cpu", defaultLimitsCPU, "Default limits for CPU for istio sidecar")
 	flag.StringVar(&istioTelegrafLimitsMemory, "istio-ttelegraf-limits-memory", defaultLimitsMemory, "Default limits for memory for istio sidecar")
 
+	zopts := zap.Options{
+		Development: true,
+	}
+	zopts.BindFlags(flag.CommandLine)
+
 	flag.Parse()
 
-	ctrl.SetLogger(zap.New(func(o *zap.Options) {
-		o.Development = true
-	}))
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zopts)))
 	entryLog := setupLog.WithName("entrypoint")
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
