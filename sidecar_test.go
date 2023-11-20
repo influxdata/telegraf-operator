@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	logrTesting "github.com/go-logr/logr/testing"
+	"github.com/go-logr/logr/testr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -147,7 +147,7 @@ func Test_validateRequestsAndLimits(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.sidecar.Logger = &logrTesting.TestLogger{T: t}
+			tt.sidecar.Logger = testr.New(t)
 
 			err := tt.sidecar.validateRequestsAndLimits()
 			if tt.wantErr && err == nil {
@@ -392,7 +392,7 @@ func Test_assembleConf(t *testing.T) {
 				RequestsMemory:              defaultRequestsMemory,
 				LimitsCPU:                   defaultLimitsCPU,
 				LimitsMemory:                defaultLimitsMemory,
-				Logger:                      &logrTesting.TestLogger{T: t},
+				Logger:                      testr.New(t),
 			}
 			gotConfig, err := handler.assembleConf(tt.pod, "class")
 			if (err != nil) != tt.wantErr {
@@ -1539,7 +1539,7 @@ status: {}
 			})
 			defer os.RemoveAll(dir)
 
-			logger := &logrTesting.TestLogger{T: t}
+			logger := testr.New(t)
 
 			testClassDataHandler := &directoryClassDataHandler{
 				Logger:                   logger,
@@ -1563,7 +1563,7 @@ status: {}
 				IstioRequestsMemory:         defaultRequestsMemory,
 				IstioLimitsCPU:              defaultLimitsCPU,
 				IstioLimitsMemory:           defaultLimitsMemory,
-				Logger:                      &logrTesting.TestLogger{T: t},
+				Logger:                      testr.New(t),
 			}
 
 			result, err := handler.addSidecars(tt.pod, "myname", "mynamespace")

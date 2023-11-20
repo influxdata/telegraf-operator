@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	logrTesting "github.com/go-logr/logr/testing"
+	"github.com/go-logr/logr/testr"
 )
 
 type mockOnChange struct {
@@ -22,7 +22,7 @@ func (m *mockOnChange) get() int {
 }
 
 func testWatcher(t *testing.T, onChange telegrafClassesOnChange) *telegrafClassesWatcher {
-	logger := &logrTesting.TestLogger{T: t}
+	logger := testr.New(t)
 
 	w := &telegrafClassesWatcher{
 		watcherEvents: make(chan fsnotify.Event, 100),

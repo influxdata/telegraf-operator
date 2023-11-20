@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	logrTesting "github.com/go-logr/logr/testing"
+	"github.com/go-logr/logr/testr"
 )
 
 const (
@@ -41,7 +41,7 @@ func Test_classDataHandler_getData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			logger := &logrTesting.TestLogger{T: t}
+			logger := testr.New(t)
 
 			dir := createTempClassesDirectory(t, tt.classes)
 			defer os.RemoveAll(dir)
@@ -90,7 +90,7 @@ func Test_classDataHandler_validateClassData(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logger := &logrTesting.TestLogger{T: t}
+			logger := testr.New(t)
 
 			dir := createTempClassesDirectory(t, tt.classes)
 			defer os.RemoveAll(dir)

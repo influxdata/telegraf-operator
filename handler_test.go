@@ -17,7 +17,7 @@ import (
 	testclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	logrTesting "github.com/go-logr/logr/testing"
+	"github.com/go-logr/logr/testr"
 )
 
 const (
@@ -838,14 +838,12 @@ func Test_podInjector_Handle(t *testing.T) {
 				tt.handler.TelegrafImage = defaultTelegrafImage
 			}
 
-			if tt.handler.Logger == nil {
-				tt.handler.Logger = &logrTesting.TestLogger{T: t}
-			}
+			tt.handler.Logger = testr.New(t)
 
 			dir := createTempClassesDirectory(t, tt.classes)
 			defer os.RemoveAll(dir)
 
-			logger := &logrTesting.TestLogger{T: t}
+			logger := testr.New(t)
 
 			testClassDataHandler := &directoryClassDataHandler{
 				Logger:                   logger,
@@ -998,7 +996,7 @@ func Test_isSecretManagedByTelegrafOperator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logger := &logrTesting.TestLogger{T: t}
+			logger := testr.New(t)
 
 			p := &podInjector{
 				Logger:                      logger,
