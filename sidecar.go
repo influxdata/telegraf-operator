@@ -407,7 +407,7 @@ func (h *sidecarHandler) parseCustomTelegrafVolumeMounts(volumeMounts *map[strin
 		if err = json.Unmarshal([]byte(telegrafVolumeMount), volumeMounts); err != nil {
 			return err
 		}
-		
+
 	}
 	return nil
 }
