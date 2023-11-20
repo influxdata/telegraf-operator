@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
-	logrTesting "github.com/go-logr/logr/testing"
+	"github.com/go-logr/logr/testr"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -50,7 +50,7 @@ type secretsUpdaterTest struct {
 // newSecretsUpdaterTest creates a new instance of secretsUpdaterTest without initializing all objects.
 // The createObjects() method should be called before testing to create K8s client and other objects.
 func newSecretsUpdaterTest(t *testing.T, objects ...runtime.Object) *secretsUpdaterTest {
-	logger := &logrTesting.TestLogger{T: t}
+	logger := testr.New(t)
 
 	ns1 := &corev1.Namespace{
 		TypeMeta: v1.TypeMeta{Kind: "Namespace", APIVersion: "v1"},
