@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apiserver/pkg/storage/names"
 )
 
 const (
@@ -166,24 +167,17 @@ func (h *sidecarHandler) validateRequestsAndLimits() (err error) {
 	return nil
 }
 
-func (h *sidecarHandler) telegrafSecretNames(name string) []string {
-	return []string{
-		fmt.Sprintf("telegraf-%s-%s", telegrafSecretInfix, name),
-		fmt.Sprintf("telegraf-istio-%s-%s", telegrafSecretInfix, name),
-	}
-}
-
-func (h *sidecarHandler) addSidecars(pod *corev1.Pod, name, namespace string) (*sidecarHandlerResponse, error) {
+func (h *sidecarHandler) addSidecars(pod *corev1.Pod) (*sidecarHandlerResponse, error) {
 	result := &sidecarHandlerResponse{}
 	if h.shouldAddTelegrafSidecar(pod) {
-		err := h.addTelegrafSidecar(result, pod, name, namespace, "telegraf")
+		err := h.addTelegrafSidecar(result, pod, "telegraf")
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	if h.shouldAddIstioTelegrafSidecar(pod) {
-		err := h.addIstioTelegrafSidecar(result, pod, name, namespace)
+		err := h.addIstioTelegrafSidecar(result, pod)
 		if err != nil {
 			return nil, err
 		}
@@ -191,7 +185,7 @@ func (h *sidecarHandler) addSidecars(pod *corev1.Pod, name, namespace string) (*
 	return result, nil
 }
 
-func (h *sidecarHandler) addTelegrafSidecar(result *sidecarHandlerResponse, pod *corev1.Pod, name, namespace, containerName string) error {
+func (h *sidecarHandler) addTelegrafSidecar(result *sidecarHandlerResponse, pod *corev1.Pod, containerName string) error {
 	className := h.TelegrafDefaultClass
 	if extClass, ok := pod.Annotations[TelegrafClass]; ok {
 		className = extClass
@@ -207,10 +201,10 @@ func (h *sidecarHandler) addTelegrafSidecar(result *sidecarHandlerResponse, pod 
 		return err
 	}
 
-	return h.addContainerAndSecret(result, pod, container, className, name, namespace, telegrafConf)
+	return h.addContainerAndSecret(result, pod, container, className, telegrafConf)
 }
 
-func (h *sidecarHandler) addIstioTelegrafSidecar(result *sidecarHandlerResponse, pod *corev1.Pod, name, namespace string) error {
+func (h *sidecarHandler) addIstioTelegrafSidecar(result *sidecarHandlerResponse, pod *corev1.Pod) error {
 	classData, err := h.ClassDataHandler.getData(h.IstioOutputClass)
 	if err != nil {
 		return newNonFatalError(err, "telegraf-operator could not create sidecar container for istio class")
@@ -223,16 +217,16 @@ func (h *sidecarHandler) addIstioTelegrafSidecar(result *sidecarHandlerResponse,
 		return err
 	}
 
-	return h.addContainerAndSecret(result, pod, container, h.IstioOutputClass, name, namespace, telegrafConf)
+	return h.addContainerAndSecret(result, pod, container, h.IstioOutputClass, telegrafConf)
 }
 
-func (h *sidecarHandler) addContainerAndSecret(result *sidecarHandlerResponse, pod *corev1.Pod, container corev1.Container, className, name, namespace, telegrafConf string) error {
+func (h *sidecarHandler) addContainerAndSecret(result *sidecarHandlerResponse, pod *corev1.Pod, container corev1.Container, className, telegrafConf string) error {
 	pod.Spec.Containers = append(pod.Spec.Containers, container)
-	pod.Spec.Volumes = append(pod.Spec.Volumes, h.newVolume(name, container.Name))
-	secret, err := h.newSecret(pod, className, name, namespace, container.Name, telegrafConf)
+	secret, err := h.newSecret(pod, className, container.Name, telegrafConf)
 	if err != nil {
 		return err
 	}
+	pod.Spec.Volumes = append(pod.Spec.Volumes, h.newVolume(pod.GetName(), container.Name, secret.GetName()))
 	result.secrets = append(result.secrets, secret)
 
 	return nil
@@ -290,9 +284,7 @@ func (h *sidecarHandler) assembleConf(pod *corev1.Pod, className string) (telegr
 	enableInternal := h.EnableDefaultInternalPlugin
 	if internalRaw, ok := pod.Annotations[TelegrafEnableInternal]; ok {
 		internal, err := strconv.ParseBool(internalRaw)
-		if err != nil {
-			internal = false
-		} else {
+		if err == nil {
 			// only override enableInternal if the annotation was successfully parsed as a boolean
 			enableInternal = internal
 		}
@@ -339,21 +331,37 @@ func (h *sidecarHandler) assembleConf(pod *corev1.Pod, className string) (telegr
 	return telegrafConf, err
 }
 
-func (h *sidecarHandler) newSecret(pod *corev1.Pod, className, name, namespace, containerName, telegrafConf string) (*corev1.Secret, error) {
+func (h *sidecarHandler) newSecret(pod *corev1.Pod, className, containerName, telegrafConf string) (*corev1.Secret, error) {
+	name := fmt.Sprintf("%s-%s-%s", containerName, telegrafSecretInfix, pod.GetName())
+
+	// If the pod is part of a statefulset, then add a random suffix to the secret name
+	// in order to avoid possible race conditions when statefulset pods are deleted and
+	// instantly recreated.
+	var isStatefulSet bool
+	for _, ownerRef := range pod.OwnerReferences {
+		if ownerRef.Kind == "StatefulSet" {
+			isStatefulSet = true
+		}
+	}
+
+	if isStatefulSet {
+		name = names.SimpleNameGenerator.GenerateName(name)
+	}
+
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s-%s", containerName, telegrafSecretInfix, name),
-			Namespace: namespace,
+			Name:      name,
+			Namespace: pod.GetNamespace(),
 			Annotations: map[string]string{
 				TelegrafSecretAnnotationKey: TelegrafSecretAnnotationValue,
 			},
 			Labels: map[string]string{
 				TelegrafSecretLabelClassName: className,
-				TelegrafSecretLabelPod:       name,
+				TelegrafSecretLabelPod:       pod.GetName(),
 			},
 		},
 		Type: "Opaque",
@@ -363,12 +371,12 @@ func (h *sidecarHandler) newSecret(pod *corev1.Pod, className, name, namespace, 
 	}, nil
 }
 
-func (h *sidecarHandler) newVolume(name, containerName string) corev1.Volume {
+func (h *sidecarHandler) newVolume(name, containerName, secretName string) corev1.Volume {
 	return corev1.Volume{
 		Name: fmt.Sprintf("%s-config", containerName),
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
-				SecretName: fmt.Sprintf("%s-%s-%s", containerName, telegrafSecretInfix, name),
+				SecretName: secretName,
 			},
 		},
 	}

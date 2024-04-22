@@ -12,8 +12,11 @@ import (
 
 	admv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	testclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -389,6 +392,41 @@ func Test_podInjector_Handle(t *testing.T) {
 				AdmissionRequest: admv1.AdmissionRequest{
 					Operation: admv1.Delete,
 					Name:      "simple",
+					OldObject: runtime.RawExtension{
+						Raw: []byte(`{
+								"apiVersion": "v1",
+								"kind": "Pod",
+								"metadata": {
+								  "name": "simple",
+								  "annotations": {
+										"telegraf.influxdata.com/port": "8080",
+										"telegraf.influxdata.com/path": "/v1/metrics",
+										"telegraf.influxdata.com/interval": "5s",
+										"telegraf.influxdata.com/image": "docker.io/library/telegraf:1.11"
+								  }
+								},
+								"spec": {
+								  "containers": [
+										{
+											"name": "busybox",
+											"image": "busybox",
+											"args": [
+												"sleep",
+												"1000000"
+											]
+										}
+								  ],
+									"volumes": [
+										{
+											"name": "telegraf-config",
+											"secret": {
+												"secretName": "telegraf-config-simple"
+											}
+										}
+									]
+								}
+							  }`),
+					},
 				},
 			},
 			fields: fields{
@@ -898,6 +936,113 @@ func Test_podInjector_Handle(t *testing.T) {
 
 				if got, want := resp.Result.Message, tt.want.Message; got != want {
 					t.Errorf("podInjector.Handle().Message =\n%v, want\n%v", got, want)
+				}
+			}
+		})
+	}
+}
+
+func Test_podInjector_Handle_delete_secret(t *testing.T) {
+	tests := []struct {
+		name    string
+		secrets []client.Object
+		req     admission.Request
+	}{
+		{
+			name: "pod secret is deleted",
+			secrets: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "telegraf-config-mypod",
+						Namespace: "mynamespace",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "telegraf-istio-config-mypod",
+						Namespace: "mynamespace",
+					},
+				},
+			},
+			req: admission.Request{
+				AdmissionRequest: admv1.AdmissionRequest{
+					Operation: admv1.Delete,
+					Namespace: "mynamespace",
+					OldObject: runtime.RawExtension{
+						Raw: []byte(`{
+							"apiVersion": "v1",
+							"kind": "Pod",
+							"metadata": {
+								"name": "mypod",
+								"namespace": "mynamespace"
+							},
+							"spec": {
+								"containers": [
+									{
+										"name": "busybox",
+										"image": "busybox",
+										"args": [
+											"sleep",
+											"1000000"
+										]
+									}
+								],
+								"volumes": [
+									{
+										"name": "telegraf-config",
+										"secret": {
+											"secretName": "telegraf-config-mypod"
+										}
+									},
+									{
+										"name": "telegraf-istio-config",
+										"secret": {
+											"secretName": "telegraf-istio-config-mypod"
+										}
+									}
+								]
+							}
+						}`),
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := testclient.NewClientBuilder().
+				WithScheme(scheme).WithObjects(tt.secrets...).Build()
+			decoder, err := admission.NewDecoder(scheme)
+			if err != nil {
+				t.Fatalf("unable to create decoder: %v", err)
+			}
+
+			logger := testr.New(t)
+
+			p := &podInjector{
+				client:  client,
+				decoder: decoder,
+				Logger:  logger,
+			}
+
+			resp := p.Handle(context.Background(), tt.req)
+			if resp.Allowed != true {
+				t.Errorf("podInjector.Handle().Allowed =\n%v, want\n%v", resp.Allowed, true)
+			}
+
+			for _, secret := range tt.secrets {
+				want := types.NamespacedName{
+					Name:      secret.GetName(),
+					Namespace: secret.GetNamespace(),
+				}
+				err = client.Get(context.Background(), want, &corev1.Secret{})
+				if !errors.IsNotFound(err) {
+					t.Errorf("delete secret=%v, podInjector.Handle().IsNotFound = %v, want = %v",
+						secret.GetName(),
+						errors.IsNotFound(err),
+						true,
+					)
 				}
 			}
 		})

@@ -181,8 +181,8 @@ func Test_assembleConf(t *testing.T) {
 			wantConfig: `
 [[inputs.prometheus]]
   urls = ["http://127.0.0.1:6060/metrics"]
-  
-  
+
+
 
 `,
 		},
@@ -198,8 +198,8 @@ func Test_assembleConf(t *testing.T) {
 			wantConfig: `
 [[inputs.prometheus]]
   urls = ["http://127.0.0.1:6060/metrics", "http://127.0.0.1:8086/metrics"]
-  
-  
+
+
 
 `,
 		},
@@ -463,6 +463,8 @@ metadata:
   annotations:
     telegraf.influxdata.com/class: default
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -508,6 +510,8 @@ metadata:
   annotations:
     telegraf.influxdata.com/image: docker.io/library/telegraf:1.11
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -589,6 +593,8 @@ metadata:
     telegraf.influxdata.com/requests-cpu: 100m
     telegraf.influxdata.com/requests-memory: 100Mi
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -636,6 +642,8 @@ metadata:
     telegraf.influxdata.com/limits-cpu: 750m
     telegraf.influxdata.com/requests-cpu: 100x
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -683,6 +691,8 @@ metadata:
     telegraf.influxdata.com/limits-cpu: 750m
     telegraf.influxdata.com/requests-cpu: 100x
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -736,6 +746,8 @@ metadata:
   annotations:
     telegraf.influxdata.com/class: default
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - image: alpine:latest
@@ -759,6 +771,8 @@ metadata:
   annotations:
     sidecar.istio.io/status: dummy
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers: null
 status: {}
@@ -781,6 +795,8 @@ metadata:
   annotations:
     sidecar.istio.io/status: dummy
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -836,6 +852,8 @@ metadata:
     telegraf.influxdata.com/istio-requests-cpu: 250m
     telegraf.influxdata.com/istio-requests-memory: 200Mi
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -923,6 +941,8 @@ metadata:
     telegraf.influxdata.com/requests-cpu: 150m
     telegraf.influxdata.com/requests-memory: 100Mi
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -1002,6 +1022,8 @@ metadata:
   annotations:
     sidecar.istio.io/status: dummy
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - image: alpine:latest
@@ -1028,6 +1050,8 @@ metadata:
   annotations:
     sidecar.istio.io/status: dummy
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -1077,6 +1101,8 @@ metadata:
     sidecar.istio.io/status: dummy
     telegraf.influxdata.com/class: default
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -1149,6 +1175,8 @@ metadata:
   annotations:
     telegraf.influxdata.com/class: default
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -1196,6 +1224,8 @@ metadata:
   annotations:
     telegraf.influxdata.com/secret-env: mysecret
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -1245,6 +1275,8 @@ metadata:
   annotations:
     telegraf.influxdata.com/env-fieldref-NAMESPACE: metadata.namespace
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -1294,6 +1326,8 @@ metadata:
   annotations:
     telegraf.influxdata.com/env-literal-STACK_VERSION: "1.0"
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -1341,6 +1375,8 @@ metadata:
   annotations:
     telegraf.influxdata.com/env-configmapkeyref-VERSION: configmap-name.application.version
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -1391,6 +1427,8 @@ metadata:
   annotations:
     telegraf.influxdata.com/env-secretkeyref-PASSWORD: app-secret.user.password
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -1449,6 +1487,8 @@ metadata:
     telegraf.influxdata.com/requests-cpu: ""
     telegraf.influxdata.com/requests-memory: ""
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -1495,6 +1535,8 @@ metadata:
     telegraf.influxdata.com/class: default
     telegraf.influxdata.com/volume-mounts: '{"emptydir":"/mnt/empty"}'
   creationTimestamp: null
+  name: myname
+  namespace: mynamespace
 spec:
   containers:
   - command:
@@ -1566,7 +1608,10 @@ status: {}
 				Logger:                      testr.New(t),
 			}
 
-			result, err := handler.addSidecars(tt.pod, "myname", "mynamespace")
+			tt.pod.Name = "myname"
+			tt.pod.Namespace = "mynamespace"
+
+			result, err := handler.addSidecars(tt.pod)
 			if err != nil {
 				t.Errorf("unexpected error adding to sidecar: %v", err)
 			}

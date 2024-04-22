@@ -55,9 +55,24 @@ func (a *podInjector) Handle(ctx context.Context, req admission.Request) admissi
 	}
 	handlerLog.V(9).Info("request=" + string(marshaled))
 
+	pod := &corev1.Pod{}
+
 	if req.Operation == admv1.Delete {
+		var secrets []string
+
+		err := a.decoder.DecodeRaw(req.OldObject, pod)
+		if err != nil {
+			return admission.Allowed("failed to decode OldObject into pod, telegraf-injector doesn't block pod deletions")
+		}
+
+		for _, vol := range pod.Spec.Volumes {
+			if vol.Name == "telegraf-config" || vol.Name == "telegraf-istio-config" {
+				secrets = append(secrets, vol.Secret.SecretName)
+			}
+		}
+
 		deleteFailed := false
-		for _, name := range a.SidecarHandler.telegrafSecretNames(req.Name) {
+		for _, name := range secrets {
 			secret := &corev1.Secret{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Secret",
@@ -79,10 +94,9 @@ func (a *podInjector) Handle(ctx context.Context, req admission.Request) admissi
 			return admission.Allowed("telegraf-injector couldn't delete one or more secrets")
 		}
 
-		return admission.Allowed("telegraf-injector doesn't block pod deletions")
+		return admission.Allowed("secrets deleted successfully, telegraf-injector doesn't block pod deletions")
 	}
 
-	pod := &corev1.Pod{}
 	err = a.decoder.Decode(req, pod)
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
@@ -101,7 +115,7 @@ func (a *podInjector) Handle(ctx context.Context, req admission.Request) admissi
 
 	a.Logger.Info("adding sidecar container")
 	// if the telegraf configuration could be created, add sidecar pod
-	result, err := a.SidecarHandler.addSidecars(pod, pod.GetName(), req.Namespace)
+	result, err := a.SidecarHandler.addSidecars(pod)
 	if err != nil {
 
 		if nonFatalErr, ok := err.(*nonFatalError); ok {
