@@ -24,12 +24,13 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	// +kubebuilder:scaffold:imports
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	webhook "sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 var (
@@ -110,11 +111,13 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zopts)))
 	entryLog := setupLog.WithName("entrypoint")
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
-		LeaderElection:     enableLeaderElection,
-		Port:               9443,
-		CertDir:            certDir,
+		Scheme:         scheme,
+		Metrics:        metricsserver.Options{BindAddress: metricsAddr},
+		LeaderElection: enableLeaderElection,
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Port:    9443,
+			CertDir: certDir,
+		}),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

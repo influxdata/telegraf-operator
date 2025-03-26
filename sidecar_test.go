@@ -12,8 +12,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/yaml"
 
-	"github.com/kudobuilder/kuttl/pkg/test/utils"
+	k8sutils "github.com/kudobuilder/kuttl/pkg/kubernetes"
 )
 
 var (
@@ -1651,9 +1652,13 @@ func toYAML(t *testing.T, o runtime.Object) string {
 	t.Helper()
 
 	var b bytes.Buffer
-	if err := utils.MarshalObject(o, &b); err != nil {
+	if err := k8sutils.MarshalObjectJSON(o, &b); err != nil {
 		t.Errorf("unable to encode container %v", err)
 	}
+	yamlData, err := yaml.JSONToYAML(b.Bytes())
+	if err != nil {
+		t.Errorf("unable to convert JSON to YAML %v", err)
+	}
 
-	return b.String()
+	return string(yamlData)
 }
