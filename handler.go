@@ -37,7 +37,7 @@ import (
 // podInjector inject telegraf Pods
 type podInjector struct {
 	client  client.Client
-	decoder *admission.Decoder
+	decoder admission.Decoder
 	names.NameGenerator
 	Logger                      logr.Logger
 	ClassDataHandler            *directoryClassDataHandler
@@ -150,7 +150,7 @@ func (a *podInjector) InjectClient(c client.Client) error {
 // A decoder will be automatically injected.
 
 // InjectDecoder injects the decoder.
-func (a *podInjector) InjectDecoder(d *admission.Decoder) error {
+func (a *podInjector) InjectDecoder(d admission.Decoder) error {
 	a.decoder = d
 	return nil
 }

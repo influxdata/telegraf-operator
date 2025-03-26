@@ -14,7 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	testclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/go-logr/logr/testr"
@@ -819,12 +819,9 @@ func Test_podInjector_Handle(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := testclient.NewFakeClientWithScheme(scheme, tt.objects...)
-			decoder, err := admission.NewDecoder(scheme)
-			if err != nil {
-				t.Fatalf("unable to create decoder: %v", err)
-			}
-
+			scheme := runtime.NewScheme()
+			client := fake.NewClientBuilder().WithScheme(scheme).Build()
+			decoder := admission.NewDecoder(scheme)
 			if tt.handler == nil {
 				tt.handler = &sidecarHandler{
 					RequestsCPU:    defaultRequestsCPU,
