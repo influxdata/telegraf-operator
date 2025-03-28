@@ -1,3 +1,9 @@
+# Support
+
+IMPORTANT: This operator is community supported. InfluxData provides no official support for its use. To best reflect this status, this repo has been archived and a community fork was created at https://github.com/InfluxCommunity/telegraf-operator/tree/main. All pull requests, bug reports, etc should be directed to https://github.com/InfluxCommunity/telegraf-operator.
+
+Pull requests and issues are the responsibility of the project's moderator(s) which may include vetted individuals outside of the InfluxData organization. All issues should be reported and managed via GitHub (not via InfluxData's standard support process).
+
 # Telegraf-operator
 
 [![Docker Repository on Quay](https://quay.io/repository/influxdb/telegraf-operator/status "Docker Repository on Quay")](https://quay.io/repository/influxdb/telegraf-operator)
@@ -326,12 +332,6 @@ stringData:
       app = "$APP"
       version = "$VERSION"
 ```
-
-# Support
-
-This operator is community supported. InfluxData provides no official support for their use.
-
-Pull requests and issues are the responsibility of the project's moderator(s) which may include vetted individuals outside of the InfluxData organization. All issues should be reported and managed via GitHub (not via InfluxData's standard support process).
 
 # Contributing to telegraf-operator
 
